@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "id": "yumenaka.comigo",
+  "name": "comigo-omarchy",
+  "version": "0.7.0",
+  "author": "yumenaka",
+  "license": "MIT",
+  "description": "Comigo reading, traffic and local service controls",
+  "kinds": [
+    "service",
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml",
+    "service": "Service.qml"
+  },
+  "barWidget": {
+    "displayName": "comigo-omarchy",
+    "category": "Info",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
