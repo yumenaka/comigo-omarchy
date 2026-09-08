@@ -5,7 +5,7 @@
 ## 实现
 
 - 概览页本机启用对外服务且存在多个 IP 时，二维码两侧箭头循环切换阅读链接与二维码地址，并加粗当前 IP；默认沿用服务返回的出口地址，远程模式保持配置 URL。
-- `Panel.qml` 管理概览、状态、服务、设置四页；概览提供二维码及下方阅读入口和 IP，状态页提供服务状态、速度、累计流量与书籍/连接统计，默认本机模式及概览页，本机缺少 CLI 时进入服务页；远程未配置地址时进入设置页。
+- `Panel.qml` 管理概览、状态、服务、设置四页；概览提供二维码及下方阅读入口和 IP，状态页提供服务状态、速度、累计流量与书籍/连接统计，默认本机模式及概览页，本机缺少 CLI 时进入服务页，安装成功并保存路径后自动启动且保留当前页；远程未配置地址时进入设置页。
 - 本机与远程通过侧栏按钮切换，Shell 启动默认本机；`serverURL` 保存本机回环地址，`remoteURL` 保存远程完整地址。远程各页只显示对应 REST 数据，隐藏本地启停、安装、日志、升级命令、CLI/书库设置、对外服务与防火墙。
 - `Service.qml` 共享 REST、登录会话、轮询和设置；`bin/comigo-ctl` 使用 Bash、curl 调用 CLI、下载发布包及管理进程。
 - JSON、剪贴板、浏览器使用 QML/Quickshell；平台文件工具与 pkexec 使用宿主提供的版本。
@@ -38,6 +38,7 @@ bash tests/test-refresh.sh
 bash tests/test-modes.sh
 bash tests/test-reading-ip.sh
 bash tests/test-autostart.sh
+bash tests/test-install.sh
 bash tests/test-version.sh
 bash tests/test-firewall.sh
 COMIGO_TEST_CLI=/path/to/comi bash tests/test-default-library.sh

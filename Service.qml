@@ -45,6 +45,7 @@ Item {
   property string localInput: ""
   property bool localPending: false
   property var queuedLocal: null
+  property string installedCLI: ""
   property var desiredExternalAccess: null
   property int reconnectAttempts: 0
   readonly property string endpoint: String(remote ? settings.remoteURL || "" : settings.serverURL || "http://127.0.0.1:1234/").replace(/\/+$/, "")
@@ -240,14 +241,21 @@ Item {
     localPending=false
     try {data=JSON.parse(raw)} catch(e){data={error:"command_failed"}}
     if(action==="autostart" && ((!data.error && code===0) || data.error==="autostart_exhausted"))autoStartDone=true
-    if(data.error || code!==0) {tell(data.error || "command_failed"); drainLocal();return}
+    if(data.error || code!==0) {installedCLI="";tell(data.error || "command_failed"); drainLocal();return}
     if(action==="status") {
       updateSnapshot("localInfo",data);localChecked=true
     }
     else if(action==="check-update") updateSnapshot("updateInfo",data)
     else {
-      if(action==="save-settings") settingsFile.reload()
-      if(action==="install") {var next=Object.assign({},settings);next.cliPath=data.cliPath;localInput=JSON.stringify(next);runLocal("save-settings",[])}
+      if(action==="save-settings") {
+        settingsFile.reload()
+        // 安装后的首次启动使用下载结果，避免等待设置文件异步重载。
+        if(installedCLI) {
+          var cli=installedCLI;installedCLI="";autoStartDone=true
+          runLocal("start",[endpoint+"/",cli,settings.libraryDir || ""])
+        }
+      }
+      if(action==="install") {installedCLI=data.cliPath;var next=Object.assign({},settings);next.cliPath=data.cliPath;localInput=JSON.stringify(next);runLocal("save-settings",[])}
       tell("done");afterCommand.restart()
     }
     drainLocal()

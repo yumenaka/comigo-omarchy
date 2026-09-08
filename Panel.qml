@@ -13,18 +13,17 @@ Panel {
   readonly property var svc: serviceOverride || (bar && bar.shell ? bar.shell.serviceFor(moduleName) : null)
   property string page:"home"
   property bool initialPageChosen:false
-  property bool userSelectedPage:false
   function chooseInitialPage() {if(!initialPageChosen && svc && (svc.remote || svc.localChecked)){page=svc.remote ? (svc.endpoint ? "home" : "config") : svc.localInfo.installed ? "home" : "service";initialPageChosen=true}}
   onSvcChanged:Qt.callLater(chooseInitialPage)
   onOpenedChanged:if(opened && svc && !svc.remote && svc.localChecked && !svc.localInfo.installed)page="service"
-  Connections {target:root.svc;function onModeChanged(){root.initialPageChosen=false;root.userSelectedPage=false;Qt.callLater(root.chooseInitialPage)}function onLocalCheckedChanged(){root.chooseInitialPage()} function onLocalInfoChanged(){if(!root.userSelectedPage){root.initialPageChosen=false;root.chooseInitialPage()}}}
+  Connections {target:root.svc;function onModeChanged(){root.initialPageChosen=false;Qt.callLater(root.chooseInitialPage)}function onLocalCheckedChanged(){root.chooseInitialPage()} function onLocalInfoChanged(){root.chooseInitialPage()}}
   readonly property bool qrReady: homePage.qrStatus === Image.Ready
   readonly property var currentPage: page==="status" ? statusPage : page==="service" ? serverPage : page==="config" ? settingsPage : homePage
   readonly property var pageNames:["home","status","service","config"]
   implicitWidth:button.implicitWidth
   implicitHeight:button.implicitHeight
   function t(key) {return svc ? svc.t(key) : key}
-  function goto(name) {if(pageNames.indexOf(name)>=0){userSelectedPage=true;page=name}}
+  function goto(name) {if(pageNames.indexOf(name)>=0){page=name}}
   function cyclePage(direction) {goto(pageNames[(pageNames.indexOf(page)+direction+pageNames.length)%pageNames.length])}
   Binding {target:root.svc;property:"active";value:root.opened;when:!!root.svc}
   Binding {target:root.svc;property:"page";value:root.page;when:!!root.svc}

@@ -19,10 +19,12 @@ After installation, click the Comigo icon in the status bar to open the panel.
 ### Local mode (default)
 
 1. Open the **Service** tab, click **Install Comigo binary**, and follow the prompts. Skip this step if Comigo is already installed.
-2. Click **Start** to start Comigo.
+2. Comigo starts automatically after installation and stays on **Service**. If already installed, click **Start**.
 3. Open the reading link or scan the QR code on **Overview**.
 
 To choose a library, enter its directory in **Settings** and save; leave it empty to use Comigo's defaults. Enable automatic startup on **Service** to start Comigo when you log in to the desktop.
+
+Without library arguments or a configuration file, Comigo selects the first existing directory under Home in this order: Pictures, Documents, Downloads. If none exists, it uses the working directory; it does not create these directories.
 
 ### Remote mode
 
