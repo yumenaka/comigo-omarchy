@@ -42,7 +42,8 @@ Panel {
     bar:root.bar
     anchors.fill:parent
     tooltipText:(root.svc ? root.svc.serviceName : "Comigo")+" · "+(root.svc ? root.svc.stateText : "—")
-    iconComponent:Component {Image {source:Qt.resolvedUrl("icon.png");fillMode:Image.PreserveAspectFit;opacity:root.svc && root.svc.connected ? 1 : 0.55}}
+    // 离线时仍可点击打开面板，连接状态由面板中的状态文字表达。
+    iconComponent:Component {Image {source:Qt.resolvedUrl("icon.png");fillMode:Image.PreserveAspectFit}}
     onPressed:function(mouseButton){if(mouseButton===Qt.MiddleButton && root.svc)root.svc.refresh();else root.toggle()}
   }
   KeyboardPanel {

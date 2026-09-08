@@ -37,7 +37,7 @@ Page {
       checked:root.svc && root.svc.settings.autoStart===true
       enabled:root.svc && !root.svc.busy
       onClicked:{root.svc.saveSettings(Object.assign({},root.svc.settings,{autoStart:checked}));checked=Qt.binding(function(){return root.svc && root.svc.settings.autoStart===true})}
-      palette.windowText:Color.popups.text
+      palette.windowText:Util.alpha(Color.popups.text,1)
       font.family:Style.font.family;font.pixelSize:Style.font.bodySmall
     }
     Text {width:parent.width;text:root.t("auto_start_note");wrapMode:Text.WordWrap;color:Util.alpha(Color.popups.text,0.55);font.family:Style.font.family;font.pixelSize:Style.font.caption}

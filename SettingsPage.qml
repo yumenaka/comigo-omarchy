@@ -21,7 +21,7 @@ Page {
       checked:root.svc && root.svc.info.externalAccess===true
       enabled:root.svc && root.svc.connected && !root.svc.busy && typeof root.svc.info.externalAccess==="boolean" && !root.svc.serverConfig.ReadOnlyMode
       onClicked:{root.svc.setExternalAccess(!root.svc.info.externalAccess);checked=Qt.binding(function(){return root.svc && root.svc.info.externalAccess===true})}
-      palette.windowText:Color.popups.text
+      palette.windowText:Util.alpha(Color.popups.text,1)
       font.family:Style.font.family;font.pixelSize:Style.font.bodySmall
     }
     InfoRow {width:parent.width;label:root.t("listen_address");value:root.svc ? root.svc.info.listenAddress || "—" : "—"}

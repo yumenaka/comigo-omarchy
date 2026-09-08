@@ -15,7 +15,8 @@ Controls.Button {
     id: label
     text: root.text
     textFormat: Text.PlainText
-    color: root.primary ? Color.accent : Color.popups.text
+    // 可点击文字始终不透明，禁用状态统一由按钮整体 opacity 表达。
+    color: Util.alpha(root.primary ? Color.accent : Color.popups.text, 1)
     font.family: Style.font.family
     font.pixelSize: Style.font.bodySmall
     horizontalAlignment: Text.AlignHCenter
