@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
   "id": "yumenaka.comigo",
-  "name": "comigo-omarchy",
+  "name": "Comigo",
   "version": "0.7.0",
   "author": "yumenaka",
   "license": "MIT",
-  "description": "Comigo reading, traffic and local service controls",
+  "description": "Comic & Manga reader for Omarchy",
   "kinds": [
     "service",
     "bar-widget"
@@ -15,8 +15,8 @@
     "service": "Service.qml"
   },
   "barWidget": {
-    "displayName": "comigo-omarchy",
-    "category": "Info",
+    "displayName": "Comigo",
+    "category": "Other",
     "allowMultiple": false,
     "defaultSection": "right"
   }

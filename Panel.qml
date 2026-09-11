@@ -41,8 +41,8 @@ Panel {
     bar:root.bar
     anchors.fill:parent
     tooltipText:(root.svc ? root.svc.serviceName : "Comigo")+" · "+(root.svc ? root.svc.stateText : "—")
-    // 离线时沿用系统图标的弱化样式，仍可点击打开面板。
-    dimmed:!root.svc || !root.svc.connected
+    // 离线时使用 75% 不透明度，仍可点击打开面板。
+    opacity:root.svc && root.svc.connected ? 1 : 0.75
     iconComponent:Component {Image {source:Qt.resolvedUrl("icon.png");fillMode:Image.PreserveAspectFit}}
     onPressed:function(mouseButton){if(mouseButton===Qt.MiddleButton && root.svc)root.svc.refresh();else root.toggle()}
   }
