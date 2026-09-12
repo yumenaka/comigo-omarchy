@@ -9,7 +9,7 @@ cat > "$tmp/config/omarchy-comigo/settings.json" <<'JSON'
 {"serverURL":"http://127.0.0.1:1234/","cliPath":"/fake/comi","libraryDir":"/initial","language":"en"}
 JSON
 cat > "$tmp/server.json" <<'JSON'
-{"Version":"v1.3.5","externalAccess":false,"listenAddress":"127.0.0.1","localIPs":["192.0.2.1"],"traffic":{"sentBytes":0,"receivedBytes":0,"sendBytesPerSecond":0,"receiveBytesPerSecond":0}}
+{"Version":"v1.3.6","externalAccess":false,"listenAddress":"127.0.0.1","localIPs":["192.0.2.1"],"traffic":{"sentBytes":0,"receivedBytes":0,"sendBytesPerSecond":0,"receiveBytesPerSecond":0}}
 JSON
 printf '%s\n' '{"current":{"path":"/config/reader.toml","location":"Custom","type":"cli","format":"toml","exists":true}}' > "$tmp/files.json"
 printf '%s\n' '{"Port":1234,"ReadOnlyMode":false}' > "$tmp/configs.json"
@@ -25,7 +25,6 @@ case "$1" in
    /api/server) cat "$COMIGO_FIXTURE/server.json";;
    /api/configs/status) cat "$COMIGO_FIXTURE/files.json";;
    /api/configs) cat "$COMIGO_FIXTURE/configs.json";;
-   /api/server/update) printf '%s' '{"state":"checked","available":false}';;
    *) exit 1;;
   esac
   printf '\n200';;
@@ -55,6 +54,7 @@ ShellRoot {
  id:test
  Comigo.Service {id:svc;manifest:({__sourceDir:Quickshell.env("COMIGO_FIXTURE")});active:true;page:"config"}
  Comigo.SettingsPage {id:page;svc:svc}
+ property bool queuedRead:false
  property int step:0
  property int ticks:0
  property int deadline:0
@@ -113,9 +113,9 @@ ShellRoot {
     if(find(page,"configFilePath").value!=="/new/config.toml" || find(page,"configFileLocation").value!=="User directory (global)"){fail("read-only config file metadata");return}
     // 后台请求中发出的用户操作必须排队执行。
     if(svc.pendingHTTP || svc.busy)return
-    svc.refresh(false);svc.checkUpdate();step=7;return
+    svc.refresh(false);svc.request("GET","/api/configs/status",null,function(status,data){queuedRead=status===200 && data.current.path==="/new/config.toml"});step=7;return
    }
-   if(step===7 && svc.updateInfo.state==="checked"){
+   if(step===7 && queuedRead){
     console.log("COMIGO_REFRESH_OK");Qt.quit()
    }
   }

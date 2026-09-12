@@ -32,12 +32,12 @@ ShellRoot {
    if(!svc.unsupportedServer || svc.pendingHTTP || svc.localPending)return
    try {
     verify(!svc.connected && svc.stateText===svc.t("unsupported"),"404 message")
-    var rejected=["v1.3.4","v1.2.99","v0.9.99","v1.3.5-rc.1","invalid",""]
+    var rejected=["v1.3.5","1.3.5","v1.3.5+build","v1.3.4","v1.2.99","v0.9.99","v1.3.6-rc.1","invalid",""]
     for(var i=0;i<rejected.length;i++){
      svc.receiveServer(200,{Version:rejected[i]})
      verify(!svc.connected && svc.unsupportedServer,"accepted "+rejected[i])
     }
-    var accepted=["v1.3.5","1.3.5","v1.3.5+build","v1.3.10","v1.4.0","v2.0.0"]
+    var accepted=["v1.3.6","1.3.6","v1.3.6+build","v1.3.10","v1.4.0","v2.0.0"]
     for(i=0;i<accepted.length;i++){
      svc.receiveServer(200,{Version:accepted[i]})
      verify(svc.connected && !svc.unsupportedServer,"rejected "+accepted[i])

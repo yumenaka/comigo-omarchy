@@ -88,17 +88,9 @@ case "$action" in
     if owned_process; then active=active; fi
     printf '{"installed":%s,"desktop":%s,"cliPath":' "$installed" "$desktop"
     json_string "$binary"; printf ',"version":'; json_string "$version"; printf ',"active":'; json_string "$active"
-    printf ',"logPath":'; json_string "$state_dir/comi.log"; printf ',"installPath":'
-    destination="$HOME/.local/bin/comi"
-    [[ ":$PATH:" != *:/usr/bin:* ]] || destination=/usr/bin/comi
-    json_string "$destination"
+    printf ',"logPath":'; json_string "$state_dir/comi.log"
     firewall=$(bash "$firewall_runner" status "${2:-http://127.0.0.1:1234/}" 2>/dev/null) || firewall='{"supported":false}'
     printf ',"firewall":%s}\n' "$firewall"
-    ;;
-  check-update)
-    find_cli "${1:-}"; [[ -n "$binary" ]] || fail missing_cli
-    [[ "$desktop" == true ]] || fail unsupported
-    exec "$binary" desktop check-update
     ;;
   start|stop|restart|autostart)
     local_endpoint "${1:?URL}"
@@ -147,39 +139,6 @@ case "$action" in
     done
     stop_process
     fail start_timeout
-    ;;
-  install)
-    # 只下载固定官方发布资产，不执行远程安装脚本；按宿主平台映射文件名。
-    case "$(uname -s)" in Linux) platform=Linux;; Darwin) platform=MacOS;; *) fail unsupported_platform;; esac
-    case "$(uname -m)" in x86_64) arch=x86_64;; aarch64|arm64) arch=arm64;; armv7l|armv7) arch=armv7;; *) fail unsupported_platform;; esac
-    destination="${1:-}"
-    if [[ -z "$destination" ]]; then
-      destination="$HOME/.local/bin/comi"
-      [[ ":$PATH:" != *:/usr/bin:* ]] || destination=/usr/bin/comi
-    fi
-    [[ ! -e "$destination" && ! -L "$destination" ]] || fail destination_exists
-    release=$(curl -q -fsSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 30 -H 'Accept-Encoding: identity' https://comigo.xyz/yumenaka/api.github.com/repos/yumenaka/comigo/releases/latest) || fail http_error
-    pattern='"tag_name"[[:space:]]*:[[:space:]]*"(v[0-9]+\.[0-9]+\.[0-9]+([-.][A-Za-z0-9.-]+)?)"'
-    [[ "$release" =~ $pattern ]] || fail invalid_release
-    tag="${BASH_REMATCH[1]}"
-    temporary=$(mktemp -d "${TMPDIR:-/tmp}/comigo-download.XXXXXX")
-    trap 'rm -f -- "$temporary/archive" "$temporary/comi"; rmdir "$temporary"' EXIT
-    curl -q -fsSL --proto '=https' --proto-redir '=https' --connect-timeout 10 --max-time 300 --output "$temporary/archive" "https://comigo.xyz/yumenaka/comigo/releases/download/$tag/comi_${tag}_${platform}_${arch}.tar.gz" || fail http_error
-    # 仅提取 comi 的内容，压缩包中的其他路径或链接不会写入文件系统。
-    tar -xzOf "$temporary/archive" comi > "$temporary/comi" || fail invalid_release
-    chmod 755 "$temporary/comi"
-    output=$("$temporary/comi" --version 2>/dev/null) || fail invalid_release
-    [[ "$output" == *"Comigo $tag"* ]] || fail invalid_release
-    if [[ -w "${destination%/*}" ]]; then
-      install -m 755 -- "$temporary/comi" "$destination" || fail install_failed
-    elif [[ "$destination" == /usr/bin/comi ]]; then
-      # 图形会话通过系统认证对话框授权，仅提升最终复制操作。
-      pkexec /usr/bin/install -m 755 -- "$temporary/comi" "$destination" || fail install_failed
-    else
-      mkdir -p -- "${destination%/*}"
-      install -m 755 -- "$temporary/comi" "$destination" || fail install_failed
-    fi
-    printf '{"ok":true,"cliPath":'; json_string "$destination"; printf '}\n'
     ;;
   save-settings)
     # 文件仅含非敏感界面设置，JSON 由 QML 生成，禁止 source/eval 配置。

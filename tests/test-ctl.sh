@@ -9,8 +9,7 @@ cat > "$tmp/bin/comi" <<'CLI'
 #!/usr/bin/env bash
 case "$*" in
   --version) echo 'Comigo v1.2.3';;
-  --help) echo '  comi desktop Machine-readable desktop integration: info, check-update';;
-  'desktop check-update') echo '{"state":"checked","available":true,"latestVersion":"v1.2.4"}';;
+  --help) echo '  comi desktop Machine-readable desktop integration: info';;
   *) exit 99;;
 esac
 CLI
@@ -29,7 +28,6 @@ status=$(bash "$root/bin/comigo-ctl" status)
 [[ "$status" == *'"installed":true'* && "$status" == *'"desktop":true'* ]]
 result=$(printf 'test-token\n{"password":"test-password"}' | bash "$root/bin/comigo-ctl" request POST http://localhost:1234 /api/login)
 [[ "$result" == *$'\n200' ]]
-[[ $(bash "$root/bin/comigo-ctl" check-update) == *'"available":true'* ]]
 # 伪造记录即便指向存活 PID，启动时间不匹配时也绝不能发送信号。
 export XDG_RUNTIME_DIR="$tmp/runtime" XDG_STATE_HOME="$tmp/state"
 mkdir -p "$XDG_RUNTIME_DIR/omarchy-comigo"
@@ -43,11 +41,11 @@ if bash "$root/bin/comigo-ctl" start http://example.com/ "$tmp/bin/comi" "$tmp/b
 [[ $(< "$tmp/out") == *local_url_required* ]]
 printf '{"serverURL":"http://localhost:1234/","language":"ja"}' | bash "$root/bin/comigo-ctl" save-settings >/dev/null
 [[ $(< "$XDG_CONFIG_HOME/omarchy-comigo/settings.json") == *'"language":"ja"'* ]]
-# 无 desktop 能力的 CLI 不能接收桌面命令，避免误启动服务。
+# 状态查询仍能识别 CLI 的桌面协议能力。
 printf '#!/usr/bin/env bash\ncase "$*" in --version) echo "Comigo v1.0.0";; --help) echo usage;; *) exit 99;; esac\n' > "$tmp/bin/comi"
 [[ $(bash "$root/bin/comigo-ctl" status) == *'"desktop":false'* ]]
 if bash "$root/bin/comigo-ctl" check-update > "$tmp/out"; then exit 1; fi
-[[ $(< "$tmp/out") == *unsupported* ]]
+[[ $(< "$tmp/out") == *unknown_action* ]]
 
 # 状态查询不提供默认书库，书库规则由 Comigo 管理。
 [[ "$status" != *'"defaultLibrary":'* ]]

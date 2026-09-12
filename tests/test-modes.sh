@@ -20,11 +20,10 @@ case "$1" in
   if [[ "$side:$token" == remote:local-session || "$side:$token" == local:remote-session ]]; then touch "$COMIGO_FIXTURE/leaked";fi
   sleep 0.3
   case "$4" in
-   /api/server) printf '{"Version":"v1.3.5+%s-rest","readingURL":"http://127.0.0.1:1234/","localBrowserURL":"http://127.0.0.1:1234/","localIPs":["%s-ip"],"traffic":{"sentBytes":%s,"receivedBytes":1},"externalAccess":true}' "$side" "$side" "$sent";;
+   /api/server) printf '{"Version":"v1.3.6+%s-rest","readingURL":"http://127.0.0.1:1234/","localBrowserURL":"http://127.0.0.1:1234/","localIPs":["%s-ip"],"traffic":{"sentBytes":%s,"receivedBytes":1},"externalAccess":true}' "$side" "$side" "$sent";;
    /api/server/traffic) printf '{"sentBytes":%s,"receivedBytes":1}' "$sent";;
    /api/configs) printf '{"Port":1234,"ReadOnlyMode":false}';;
    /api/configs/status) printf '{"current":{"path":"/%s/config.toml","type":"cli","location":"Custom","format":"toml","exists":true}}' "$side";;
-   /api/server/update) printf '{"state":"checked","latestVersion":"remote-release"}';;
    *) touch "$COMIGO_FIXTURE/forbidden";exit 1;;
   esac
   printf '\n200';;
@@ -48,7 +47,7 @@ ShellRoot {
  property int step:0
  property int ticks:0
  property bool mixed:false
- Connections {target:svc;function onInfoChanged(){if(svc.remote && svc.info.Version==="v1.3.5+local-rest")test.mixed=true}}
+ Connections {target:svc;function onInfoChanged(){if(svc.remote && svc.info.Version==="v1.3.6+local-rest")test.mixed=true}}
  function find(item,name) {if(item.objectName===name)return item;for(var i=0;i<item.children.length;i++){var result=find(item.children[i],name);if(result)return result}return null}
  function fail(message) {console.error("MODES_FAIL",step,message);Qt.quit()}
  Timer {
@@ -65,31 +64,28 @@ ShellRoot {
    }
    if(test.step===1){
     if(panel.page!=="config" || svc.endpoint || svc.connected || svc.version!=="—" || svc.token){test.fail("empty remote mode");return}
-    if(find(settingsPage,"accessCard").visible || find(settingsPage,"firewallCard").visible || find(serverPage,"installCard").visible || find(serverPage,"localControlCard").visible || find(serverPage,"upgradeCommand").visible){test.fail("local UI in remote mode");return}
+    if(find(settingsPage,"accessCard").visible || find(settingsPage,"firewallCard").visible || find(serverPage,"localControlCard").visible){test.fail("local UI in remote mode");return}
     // 即使直接调用入口，也不能在远程模式执行本地管理操作。
-    svc.control("start");svc.firewall("open");svc.runLocal("install",[]);svc.checkUpdate()
+    svc.control("start");svc.firewall("open");svc.runLocal("restart",[])
     var library=find(settingsPage,"libraryDir");library.text="/unsaved-local";library.textEdited()
     var remote=find(settingsPage,"remoteURL");remote.text="http://127.0.0.1:2234/books/";remote.textEdited()
     find(settingsPage,"saveSettings").clicked();test.step=2;return
    }
    if(test.step===2 && svc.connected){
-    if(svc.version!=="v1.3.5+remote-rest" || svc.readingURL!=="http://127.0.0.1:2234/books/" || svc.browserURL!==svc.readingURL || svc.settings.libraryDir!=="/local/books" || svc.settings.serverURL!=="http://127.0.0.1:1234/" || svc.info.localIPs[0]!=="remote-ip"){test.fail("remote data or settings isolation");return}
+    if(svc.version!=="v1.3.6+remote-rest" || svc.readingURL!=="http://127.0.0.1:2234/books/" || svc.browserURL!==svc.readingURL || svc.settings.libraryDir!=="/local/books" || svc.settings.serverURL!=="http://127.0.0.1:1234/" || svc.info.localIPs[0]!=="remote-ip"){test.fail("remote data or settings isolation");return}
     svc.token="remote-session";svc.loadConfig();test.step=3;return
    }
    if(test.step===3 && svc.configFileStatus){
     if(svc.configFileStatus.path!=="/remote/config.toml" || svc.traffic.sentBytes!==99){test.fail("remote config and traffic");return}
-    svc.checkUpdate();test.step=4;return
-   }
-   if(test.step===4 && svc.updateInfo.state==="checked"){
     svc.setMode("local");test.step=5;return
    }
    if(test.step===5 && svc.connected){
-    if(svc.version!=="v1.3.5+local-rest" || svc.token!=="local-session" || !find(settingsPage,"accessCard").visible || !find(settingsPage,"firewallCard").visible || find(settingsPage,"libraryDir").text!=="/unsaved-local"){test.fail("local session or draft restoration");return}
+    if(svc.version!=="v1.3.6+local-rest" || svc.token!=="local-session" || !find(settingsPage,"accessCard").visible || !find(settingsPage,"firewallCard").visible || find(settingsPage,"libraryDir").text!=="/unsaved-local"){test.fail("local session or draft restoration");return}
     // 切换时让旧 HTTP 请求继续完成，确认响应不会混入新服务。
     svc.refresh(false);svc.setMode("remote");test.step=6;return
    }
    if(test.step===6 && svc.connected){
-    if(test.mixed || svc.version!=="v1.3.5+remote-rest" || svc.token!=="remote-session"){test.fail("stale response or session mixing");return}
+    if(test.mixed || svc.version!=="v1.3.6+remote-rest" || svc.token!=="remote-session"){test.fail("stale response or session mixing");return}
     svc.refresh(false);svc.logout();test.step=7;return
    }
    if(test.step===7){

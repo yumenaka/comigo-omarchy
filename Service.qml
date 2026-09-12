@@ -25,7 +25,6 @@ Item {
   property var configFileStatus: null
   property bool localChecked: false
   property var localInfo: ({installed:false, active:"unknown", desktop:false})
-  property var updateInfo: ({state:"unchecked"})
   property string token: ""
   property string notice: ""
   property string lastError: ""
@@ -45,7 +44,6 @@ Item {
   property string localInput: ""
   property bool localPending: false
   property var queuedLocal: null
-  property string installedCLI: ""
   property var desiredExternalAccess: null
   property int reconnectAttempts: 0
   readonly property string endpoint: String(remote ? settings.remoteURL || "" : settings.serverURL || "http://127.0.0.1:1234/").replace(/\/+$/, "")
@@ -75,7 +73,6 @@ Item {
   function tell(key) { notice = t(key); toastTimer.restart() }
   function copy(value) { Quickshell.clipboardText = String(value); tell("copied") }
   function browse(url) { if (/^https?:\/\//.test(url)) Qt.openUrlExternally(url) }
-  function upgradeCommand() { return Model.shellQuote(localInfo.cliPath || "comi") + " --upgrade" }
 
   // 用户配置只保存非敏感字段，登录令牌从不写盘。
   function saveSettings(values) {
@@ -92,7 +89,7 @@ Item {
   function clearConnection() {
     selectedReadingIP=""
     generation++; queuedRequest=null; desiredExternalAccess=null
-    connected=false; unsupportedServer=false; info={}; traffic=null; serverConfig={}; configFileStatus=null; updateInfo={state:"unchecked"}
+    connected=false; unsupportedServer=false; info={}; traffic=null; serverConfig={}; configFileStatus=null
     notice=""; lastError=""
   }
   function switchConnection() {
@@ -163,13 +160,12 @@ Item {
     },true)
   }
   function receiveServer(status, data) {
-    // 按 v1.3.5 服务协议校验版本和接口可用性。
+    // 按 v1.3.6 服务协议校验版本和接口可用性。
     root.unsupportedServer = status === 404 || (status === 200 && (!data || !Model.supportedVersion(data.Version)))
     root.connected = status === 200 && !root.unsupportedServer
     if (root.connected) {
       root.updateSnapshot("info",data); root.updateSnapshot("traffic",data.traffic || null); root.lastError = ""
       if (root.desiredExternalAccess !== null && data.externalAccess === root.desiredExternalAccess) {root.desiredExternalAccess=null;root.tell("done")}
-      if (data.update) root.updateSnapshot("updateInfo",data.update)
       if (root.page === "config") Qt.callLater(root.loadConfig)
     } else { root.info={}; root.traffic=null; root.lastError = root.t(status === 401 ? "needs_login" : root.unsupportedServer ? "unsupported" : "offline") }
   }
@@ -213,10 +209,6 @@ Item {
     })
   }
   function logout() { clearConnection();token="";needsLogin=true }
-  function checkUpdate() {
-    if (connected) request("GET", "/api/server/update", null, function(status,data) {root.updateInfo=status===200 ? data : {state:"error"};if(status!==200)root.tell("http_error")})
-    else if (!remote) runLocal("check-update", [settings.cliPath || ""])
-  }
   function firewall(action) {
     if(remote || busy)return
     runLocal("firewall-"+action,[endpoint+"/"])
@@ -241,21 +233,12 @@ Item {
     localPending=false
     try {data=JSON.parse(raw)} catch(e){data={error:"command_failed"}}
     if(action==="autostart" && ((!data.error && code===0) || data.error==="autostart_exhausted"))autoStartDone=true
-    if(data.error || code!==0) {installedCLI="";tell(data.error || "command_failed"); drainLocal();return}
+    if(data.error || code!==0) {tell(data.error || "command_failed"); drainLocal();return}
     if(action==="status") {
       updateSnapshot("localInfo",data);localChecked=true
     }
-    else if(action==="check-update") updateSnapshot("updateInfo",data)
     else {
-      if(action==="save-settings") {
-        settingsFile.reload()
-        // 安装后的首次启动使用下载结果，避免等待设置文件异步重载。
-        if(installedCLI) {
-          var cli=installedCLI;installedCLI="";autoStartDone=true
-          runLocal("start",[endpoint+"/",cli,settings.libraryDir || ""])
-        }
-      }
-      if(action==="install") {installedCLI=data.cliPath;var next=Object.assign({},settings);next.cliPath=data.cliPath;localInput=JSON.stringify(next);runLocal("save-settings",[])}
+      if(action==="save-settings") settingsFile.reload()
       tell("done");afterCommand.restart()
     }
     drainLocal()
