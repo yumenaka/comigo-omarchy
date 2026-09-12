@@ -6,7 +6,7 @@
 
 </div>
 
-![Comigo Omarchy プラグインのプレビュー](https://www.yumenaka.net/wp-content/uploads/2026/09/comigo-omarchy-plugin.png)
+![Comigo Omarchy プラグインのプレビュー](https://www.yumenaka.net/wp-content/uploads/2026/09/screenshot-comigo-omarchy-plugin.png)
 
 漫画・画像リーダー [Comigo](https://github.com/yumenaka/comigo) の Omarchy ステータスバープラグインです。日本語・英語・中国語に対応しています。
 

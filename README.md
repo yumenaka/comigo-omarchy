@@ -6,7 +6,7 @@
 
 </div>
 
-![Comigo Omarchy plugin preview](https://www.yumenaka.net/wp-content/uploads/2026/09/comigo-omarchy-plugin.png)
+![Comigo Omarchy plugin preview](https://www.yumenaka.net/wp-content/uploads/2026/09/screenshot-comigo-omarchy-plugin.png)
 
 An Omarchy status bar plugin for the [Comigo](https://github.com/yumenaka/comigo) comic and image reader, with English, Chinese, and Japanese support.
 

@@ -6,7 +6,7 @@
 
 </div>
 
-![Comigo Omarchy 插件预览](https://www.yumenaka.net/wp-content/uploads/2026/09/comigo-omarchy-plugin.png)
+![Comigo Omarchy 插件预览](https://www.yumenaka.net/wp-content/uploads/2026/09/screenshot-comigo-omarchy-plugin.png)
 
 [Comigo](https://github.com/yumenaka/comigo) 漫画与图片阅读器的 Omarchy 状态栏插件，支持中文、英文和日文。
 
