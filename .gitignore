@@ -3,3 +3,4 @@ __pycache__/
 .qmlcache/
 
 .local-source
+TEMP_*.md

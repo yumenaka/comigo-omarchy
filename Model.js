@@ -20,12 +20,12 @@ function reconcile(previous, next) {
   return unchanged ? previous : next
 }
 
-// 最低支持正式版 v1.3.6；构建元数据不影响版本门槛。
+// 最低支持正式版 v1.3.7；构建元数据不影响版本门槛。
 function supportedVersion(value) {
   var match = /^v?(\d+)\.(\d+)\.(\d+)(?:\+[0-9A-Za-z.-]+)?$/.exec(String(value || ""))
   if (!match) return false
   var major = Number(match[1]), minor = Number(match[2]), patch = Number(match[3])
-  return major > 1 || (major === 1 && (minor > 3 || (minor === 3 && patch >= 6)))
+  return major > 1 || (major === 1 && (minor > 3 || (minor === 3 && patch >= 7)))
 }
 
 // 只替换 URL 主机，保留协议、端口、路径及查询；IPv6 使用方括号。

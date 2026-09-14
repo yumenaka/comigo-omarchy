@@ -16,10 +16,10 @@ Page {
       Image {
         id:qr
         objectName:"readingQR"
-        visible:root.svc && root.svc.connected
+        visible:root.svc && root.svc.reachable
         anchors.centerIn:parent
         width:Style.space(210);height:width
-        source:root.visible && root.svc && root.svc.connected ? root.svc.endpoint+"/api/qrcode.png?qrcode_str="+encodeURIComponent(root.svc.readingURL) : ""
+        source:root.visible && root.svc && root.svc.reachable ? root.svc.endpoint+"/api/qrcode.png?qrcode_str="+encodeURIComponent(root.svc.readingURL) : ""
         fillMode:Image.PreserveAspectFit
         smooth:false
       }
@@ -42,7 +42,7 @@ Page {
   }
   Card {
     width:parent.width
-    Text {text:root.t(root.svc && root.svc.remote ? "remote_ips" : "ips");color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
+    Text {text:root.t("ips");color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
     Repeater {
       model:root.svc ? root.svc.info.localIPs || [] : []
       InfoRow {required property string modelData;width:parent.width;objectName:"readingIP_"+modelData;label:"IP";value:modelData;valueBold:root.svc && root.svc.currentReadingIP===modelData}

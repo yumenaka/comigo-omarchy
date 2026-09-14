@@ -4,7 +4,7 @@ import Quickshell.Io
 import qs.Commons
 import qs.Ui
 
-// 固定导航栏与卡片页参考 Mihomo 插件；数据和进程操作交给共享 Service。
+// 固定导航栏与卡片页参考 Mihomo 插件；数据和 REST 操作交给共享 Service。
 Panel {
   id:root
   moduleName:"yumenaka.comigo"
@@ -12,11 +12,6 @@ Panel {
   property var serviceOverride: null
   readonly property var svc: serviceOverride || (bar && bar.shell ? bar.shell.serviceFor(moduleName) : null)
   property string page:"home"
-  property bool initialPageChosen:false
-  function chooseInitialPage() {if(!initialPageChosen && svc && (svc.remote || svc.localChecked)){page=svc.remote ? (svc.endpoint ? "home" : "config") : svc.localInfo.installed ? "home" : "service";initialPageChosen=true}}
-  onSvcChanged:Qt.callLater(chooseInitialPage)
-  onOpenedChanged:if(opened && svc && !svc.remote && svc.localChecked && !svc.localInfo.installed)page="service"
-  Connections {target:root.svc;function onModeChanged(){root.initialPageChosen=false;Qt.callLater(root.chooseInitialPage)}function onLocalCheckedChanged(){root.chooseInitialPage()} function onLocalInfoChanged(){root.chooseInitialPage()}}
   readonly property bool qrReady: homePage.qrStatus === Image.Ready
   readonly property var currentPage: page==="status" ? statusPage : page==="service" ? serverPage : page==="config" ? settingsPage : homePage
   readonly property var pageNames:["home","status","service","config"]
@@ -25,6 +20,12 @@ Panel {
   function t(key) {return svc ? svc.t(key) : key}
   function goto(name) {if(pageNames.indexOf(name)>=0){page=name}}
   function cyclePage(direction) {goto(pageNames[(pageNames.indexOf(page)+direction+pageNames.length)%pageNames.length])}
+  // 离线打开或连接中断时进入设置；不干扰用户随后手动选择页面。
+  onOpenedChanged: if(opened && (!svc || !svc.connected))goto("config")
+  Connections {
+    target:root.svc
+    function onConnectedChanged(){if(root.opened && !root.svc.connected)root.goto("config")}
+  }
   Binding {target:root.svc;property:"active";value:root.opened;when:!!root.svc}
   Binding {target:root.svc;property:"page";value:root.page;when:!!root.svc}
   // 只暴露无凭据的诊断快照，便于安装后检查真正加载的状态。
@@ -32,9 +33,8 @@ Panel {
     target:"yumenaka.comigo"
     function open():void {root.open()}
     function close():void {root.close()}
-    function page(name:string):void {root.goto(name);root.open()}
-    function mode(name:string):void {if(root.svc)root.svc.setMode(name);root.open()}
-    function state():string {return JSON.stringify({mode:root.svc ? root.svc.mode : "local",page:root.page,opened:root.opened,connected:!!root.svc && root.svc.connected,installed:!!root.svc && root.svc.localInfo.installed,version:root.svc ? root.svc.version : "",traffic:root.svc ? root.svc.traffic : null})}
+    function page(name:string):void {root.open();root.goto(name)}
+    function state():string {return JSON.stringify({page:root.page,opened:root.opened,connected:!!root.svc && root.svc.connected,reachable:!!root.svc && root.svc.reachable,version:root.svc ? root.svc.version : "",needsLogin:!!root.svc && root.svc.needsLogin})}
   }
   BarIconButton {
     id:button
@@ -96,13 +96,6 @@ Panel {
           anchors.bottom:parent.bottom
           spacing:Style.space(10)
           Rectangle {width:parent.width;height:1;color:Util.alpha(Color.popups.text,0.12)}
-          Row {
-            width:parent.width;spacing:Style.space(3)
-            Repeater {
-              model:["local","remote"]
-              Action {required property string modelData;objectName:"mode_"+modelData;width:(parent.width-parent.spacing)/2;leftPadding:0;rightPadding:0;text:root.t("mode_"+modelData);primary:root.svc && root.svc.mode===modelData;enabled:root.svc && !root.svc.busy;onClicked:root.svc.setMode(modelData)}
-            }
-          }
           Row {
             width:parent.width;spacing:Style.space(3)
             Repeater {

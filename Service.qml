@@ -4,274 +4,193 @@ import Quickshell.Io
 import "Model.js" as Model
 import "I18n.js" as I18n
 
-// 单例持有连接和会话；多个屏幕共用轮询，不在每个图标中重复查询。
+// 统一 REST 客户端；宿主管理界面设置，令牌仅保留在内存。
 Item {
   id: root
   property var manifest: null
-  readonly property string runner: manifest && manifest.__sourceDir ? String(manifest.__sourceDir) + "/bin/comigo-ctl" : decodeURIComponent(Qt.resolvedUrl("bin/comigo-ctl").toString().replace(/^file:\/\//, ""))
-  readonly property var defaultSettings: ({serverURL:"http://127.0.0.1:1234/", remoteURL:"", cliPath:"", libraryDir:"", language:"auto", autoStart:false})
+  property var shell: null
+  readonly property var defaultSettings: ({serverURL:"http://127.0.0.1:1234/",language:"auto"})
   property var settings: Object.assign({},defaultSettings)
-  property int autoStartAttempts: 0
-  property bool autoStartDone: false
   property bool settingsLoaded: false
   property bool active: false
   property string page: "home"
   property bool connected: false
+  property bool reachable: false
   property bool unsupportedServer: false
   property bool needsLogin: false
+  property var publicInfo: ({})
   property var info: ({})
   property var traffic: null
   property var serverConfig: ({})
   property var configFileStatus: null
-  property bool localChecked: false
-  property var localInfo: ({installed:false, active:"unknown", desktop:false})
   property string token: ""
   property string notice: ""
   property string lastError: ""
   property var pendingHTTP: null
-  property string httpInput: ""
   property bool httpBackground: false
   property var queuedRequest: null
-  property string mode: "local"
-  readonly property bool remote: mode === "remote"
-  readonly property string serviceName: t(remote ? "remote_service" : "local_service")
-  readonly property string connectionKey: mode + ":" + endpoint
   property string sessionKey: ""
   property var sessions: ({})
   property int generation: 0
-  property int requestGeneration: 0
-  property string localAction: ""
-  property string localInput: ""
-  property bool localPending: false
-  property var queuedLocal: null
   property var desiredExternalAccess: null
   property int reconnectAttempts: 0
-  readonly property string endpoint: String(remote ? settings.remoteURL || "" : settings.serverURL || "http://127.0.0.1:1234/").replace(/\/+$/, "")
+  readonly property string endpoint: String(settings.serverURL || "").replace(/\/+$/, "")
+  // 仅允许通过已保存的本机连接切换对外服务，避免远程关闭后无法恢复。
+  readonly property bool localConnection: ["127.0.0.1","localhost"].indexOf(Model.urlHost(endpoint).toLowerCase())>=0
+  readonly property string connectionKey: endpoint
+  readonly property string serviceName: "Comigo"
   readonly property string language: settings.language === "auto" ? Qt.locale().name : settings.language || "en"
-  readonly property bool busy: (pendingHTTP !== null && !httpBackground) || queuedRequest !== null || queuedLocal !== null || (localPending && localAction !== "status") || desiredExternalAccess !== null
-  readonly property string version: info.Version || (!remote ? localInfo.version : "") || "—"
+  readonly property bool busy: (pendingHTTP !== null && !httpBackground) || queuedRequest !== null || desiredExternalAccess !== null
+  readonly property string version: publicInfo.Version || info.Version || "—"
   property string selectedReadingIP: ""
-  readonly property var readingIPs: remote || info.externalAccess===false ? [] : (info.localIPs || []).filter(function(ip, index, ips) {return ips.indexOf(ip)===index})
-  readonly property string defaultReadingURL: remote ? (endpoint ? endpoint + "/" : "") : info.readingURL || endpoint + "/"
-  readonly property string readingURL: !remote && selectedReadingIP && readingIPs.indexOf(selectedReadingIP)>=0 ? Model.withHost(defaultReadingURL,selectedReadingIP) : defaultReadingURL
+  readonly property var readingIPs: info.externalAccess===false ? [] : (info.localIPs || []).filter(function(ip,index,ips){return ips.indexOf(ip)===index})
+  // 配置地址是默认阅读入口，只有用户明确选择服务端返回的 IP 时才替换主机。
+  readonly property string readingURL: selectedReadingIP && readingIPs.indexOf(selectedReadingIP)>=0 ? Model.withHost(endpoint+"/",selectedReadingIP) : endpoint+"/"
   readonly property string currentReadingIP: Model.urlHost(readingURL)
+  readonly property string browserURL: readingURL
+  readonly property string stateText: needsLogin ? t("needs_login") : connected ? t("running") : unsupportedServer ? t("unsupported") : t("offline")
+  readonly property var hostEntry: findHostEntry(shell ? shell.barConfig : {})
+  onHostEntryChanged: loadSettings()
   onReadingIPsChanged: if(readingIPs.indexOf(selectedReadingIP)<0)selectedReadingIP=""
-  // 首次沿用服务返回的出口地址，用户选择后跨轮询保留，网卡消失则回退。
   function cycleReadingIP(direction) {
-    if(remote || readingIPs.length<2)return
+    if(readingIPs.length<2)return
     var index=readingIPs.indexOf(currentReadingIP)
-    selectedReadingIP=readingIPs[(index<0 ? (direction>0 ? 0 : readingIPs.length-1) : index+direction+readingIPs.length)%readingIPs.length]
+    selectedReadingIP=readingIPs[(index+direction+readingIPs.length)%readingIPs.length]
   }
-  readonly property string browserURL: remote || selectedReadingIP ? readingURL : info.localBrowserURL || endpoint + "/"
-  readonly property string stateText: needsLogin ? t("needs_login") : connected ? t("running") : unsupportedServer ? t("unsupported") : remote ? t(endpoint ? "offline" : "remote_setup") : !localInfo.installed ? t("missing_cli") : localInfo.active === "inactive" ? t("stopped") : t("offline")
-  function updateSnapshot(name, value) {
-    var next=Model.reconcile(root[name],value)
-    if(root[name]!==next)root[name]=next
-  }
-  function t(key) { return I18n.text(key, language) }
-  function bytes(value) { return Model.bytes(value) }
-  function tell(key) { notice = t(key); toastTimer.restart() }
-  function copy(value) { Quickshell.clipboardText = String(value); tell("copied") }
-  function browse(url) { if (/^https?:\/\//.test(url)) Qt.openUrlExternally(url) }
+  function updateSnapshot(name,value){var next=Model.reconcile(root[name],value);if(root[name]!==next)root[name]=next}
+  function t(key){return I18n.text(key,language)}
+  function bytes(value){return Model.bytes(value)}
+  function tell(key){notice=t(key);toastTimer.restart()}
+  function copy(value){Quickshell.clipboardText=String(value);tell("copied")}
+  function browse(url){if(/^https?:\/\//.test(url))Qt.openUrlExternally(url)}
+  function validURL(value){return /^https?:\/\/[^\s?#@]+(?:\/[^\s?#]*)?$/.test(value)}
 
-  // 用户配置只保存非敏感字段，登录令牌从不写盘。
-  function saveSettings(values) {
-    if (busy) return
-    var next = {serverURL:String(values.serverURL || "").trim(), remoteURL:String(values.remoteURL || "").trim(), cliPath:String(values.cliPath || "").trim(), libraryDir:String(values.libraryDir || "").trim(), language:String(values.language || "auto"), autoStart:values.autoStart===true}
-    if (!validURL(next.serverURL) || !/^https?:\/\/(127\.0\.0\.1|localhost|\[::1\])(:[0-9]+)?(\/|$)/.test(next.serverURL) || (next.remoteURL && !validURL(next.remoteURL)) || ["auto","en","zh","ja"].indexOf(next.language)<0) { tell("invalid_settings"); return }
-    for (var key in next) if (/[\r\n\x00]/.test(next[key])) { tell("invalid_settings"); return }
-    localInput = JSON.stringify(next)
-    runLocal("save-settings", [])
+  function findHostEntry(configuration) {
+    var layout=configuration.layout || {},sections=["left","center","right"]
+    for(var i=0;i<sections.length;i++) {
+      var entries=layout[sections[i]] || []
+      for(var j=0;j<entries.length;j++)if(entries[j].id==="yumenaka.comigo")return entries[j]
+    }
+    return {}
   }
-  function validURL(value) { return /^https?:\/\/[^\s?#@]+(?:\/[^\s?#]*)?$/.test(value) }
-  function setMode(value) { if (!busy && (value === "local" || value === "remote")) mode=value }
-  // 请求代次隔离模式切换和退出登录，旧响应不得恢复已清空的状态。
+  function loadSettings() {
+    if(!shell)return
+    var saved=hostEntry.comigo || {},next=Object.assign({},defaultSettings)
+    if(saved.serverURL && validURL(saved.serverURL))next.serverURL=saved.serverURL
+    if(["auto","en","zh","ja"].indexOf(saved.language)>=0)next.language=saved.language
+    updateSnapshot("settings",next)
+    var first=!settingsLoaded;settingsLoaded=true
+    if(first)Qt.callLater(refresh)
+  }
+  onShellChanged: loadSettings()
+  // 只合并用户编辑的字段，保留宿主布局属性，不直接读写任何配置文件。
+  function saveSettings(values) {
+    var next=Object.assign({},settings,values)
+    next={serverURL:String(next.serverURL || "").trim(),language:next.language || "auto"}
+    if(!validURL(next.serverURL) || ["auto","en","zh","ja"].indexOf(next.language)<0){tell("invalid_settings");return}
+    if(!shell){tell("command_failed");return}
+    shell.updateEntryInline("yumenaka.comigo",Object.assign({},hostEntry,{comigo:next}))
+    loadSettings()
+    if(JSON.stringify(settings)!==JSON.stringify(next)){tell("command_failed");return}
+    tell("done")
+  }
+  function setLanguage(value){saveSettings({language:value})}
+  // 地址切换／退出时先使旧响应失效，再清空私有状态。
   function clearConnection() {
-    selectedReadingIP=""
-    generation++; queuedRequest=null; desiredExternalAccess=null
-    connected=false; unsupportedServer=false; info={}; traffic=null; serverConfig={}; configFileStatus=null
-    notice=""; lastError=""
+    generation++;queuedRequest=null;desiredExternalAccess=null
+    timeout.stop()
+    if(pendingHTTP){var old=pendingHTTP;pendingHTTP=null;old.signal(9);old.destroy()}
+    selectedReadingIP="";connected=false;reachable=false;unsupportedServer=false
+    info={};publicInfo={};traffic=null;serverConfig={};configFileStatus=null;notice="";lastError=""
   }
   function switchConnection() {
-    if(sessionKey) sessions[sessionKey]={token:token,needsLogin:needsLogin}
-    clearConnection()
-    sessionKey=connectionKey
-    var session=sessions[sessionKey] || {}
-    token=session.token || ""; needsLogin=!!session.needsLogin
-    if(settingsLoaded)Qt.callLater(root.refresh)
-  }
-  function setLanguage(language) { var next = Object.assign({}, settings); next.language = language; saveSettings(next) }
-  FileView {
-    id: settingsFile
-    watchChanges:true
-    onFileChanged:reload()
-    path: (Quickshell.env("XDG_CONFIG_HOME") || Quickshell.env("HOME") + "/.config") + "/omarchy-comigo/settings.json"
-    onLoaded: {
-      var previous=root.settings, first=!root.settingsLoaded
-      try { var parsed = JSON.parse(text()); if (parsed.serverURL) {
-        var next=Object.assign({},root.defaultSettings)
-        for(var key in next)if(parsed[key]!==undefined)next[key]=parsed[key]
-        root.updateSnapshot("settings",next)
-      } }
-      catch (e) { root.lastError = root.t("invalid_settings") }
-      root.settingsLoaded = true; if(first || previous!==root.settings)Qt.callLater(root.refresh)
-    }
-    onLoadFailed: { root.settingsLoaded = true; Qt.callLater(root.refresh) }
+    if(sessionKey)sessions[sessionKey]={token:token}
+    clearConnection();sessionKey=connectionKey
+    token=(sessions[sessionKey] || {}).token || "";needsLogin=false
+    if(settingsLoaded)Qt.callLater(refresh)
   }
   onConnectionKeyChanged: switchConnection()
-  onActiveChanged: if (active && settingsLoaded) refresh()
-  onPageChanged: if (active && page === "config" && connected) loadConfig()
+  onActiveChanged: if(active && settingsLoaded)refresh()
+  onPageChanged: if(active && page==="config")loadConfig()
 
-  function request(method, path, body, callback, background) {
-    if (!settingsLoaded || !endpoint) return false
-    if (pendingHTTP) {
-      if (!background && httpBackground && !queuedRequest) {queuedRequest=[method,path,body,callback];return true}
-      return false
-    }
-    httpBackground=!!background
-    requestGeneration=generation
-    pendingHTTP = callback
-    httpInput = token + "\n" + (body === null ? "" : JSON.stringify(body))
-    httpProc.command = ["bash", runner, "request", method, endpoint, path]
-    httpProc.running = true
+  // 单个请求加有限排队，切换地址后旧回调不能更新当前界面。
+  function request(method,path,body,callback,background) {
+    if(!settingsLoaded || !endpoint)return false
+    if(pendingHTTP){if(!background && httpBackground && !queuedRequest)queuedRequest=[method,path,body,callback,false];return false}
+    // curl 配置从标准输入读取；地址、密码和令牌均不进入命令行或临时文件。
+    var input="url = "+curlQuote(endpoint+path)+"\nrequest = "+curlQuote(method)+"\nheader = \"Content-Type: application/json\"\n"
+    if(token && path!=="/api/info" && path!=="/api/login")input+="header = "+curlQuote("Authorization: Bearer "+token)+"\n"
+    if(body!==null)input+="data-raw = "+curlQuote(JSON.stringify(body))+"\n"
+    var proc=httpProcess.createObject(root,{input:input,callback:callback,requestGeneration:generation})
+    pendingHTTP=proc;httpBackground=!!background
+    timeout.restart();proc.running=true
     return true
   }
-  function finishHTTP(raw, code) {
-    var callback = pendingHTTP, stale=requestGeneration!==generation
-    pendingHTTP = null
-    httpBackground=false
-    var end = raw.lastIndexOf("\n"), status = end < 0 ? 0 : Number(raw.slice(end + 1))
-    var data = {}
-    try { data = JSON.parse(raw.slice(0, end)) } catch (e) {}
-    if (code !== 0 && status !== 401) status = 0
-    if (stale) Qt.callLater(root.refresh)
-    else {
-      if (status === 401) { token=""; needsLogin=true; connected=false; info={}; traffic=null; serverConfig={};configFileStatus=null }
-      if (callback) callback(status, data)
+  function curlQuote(value){return '"'+String(value).replace(/\\/g,"\\\\").replace(/"/g,'\\"').replace(/\n/g,"\\n").replace(/\r/g,"\\r").replace(/\t/g,"\\t")+'"'}
+  function finishRequest(proc,exitCode) {
+    if(pendingHTTP!==proc)return
+    timeout.stop();pendingHTTP=null
+    var requestGeneration=proc.requestGeneration,callback=proc.callback,data={},status=0
+    if(exitCode===0){
+      var split=proc.output.lastIndexOf("\n")
+      status=Number(proc.output.slice(split+1))
+      // 无效 JSON 与重定向均按失败处理，401 即使没有 JSON 也必须清除认证状态。
+      try{data=JSON.parse(proc.output.slice(0,split));if(!data || typeof data!=="object" || Array.isArray(data) || (status>=300 && status<400))throw new Error("invalid response")}catch(e){if(status!==401)status=0;data={}}
     }
-    if (queuedRequest) {var next=queuedRequest;queuedRequest=null;request(next[0],next[1],next[2],next[3],false)}
+    proc.destroy()
+    if(requestGeneration!==generation)return
+    if(status===401){token="";needsLogin=true;connected=false;info={};traffic=null;serverConfig={};configFileStatus=null}
+    callback(status,data)
+    if(queuedRequest){var next=queuedRequest;queuedRequest=null;Qt.callLater(function(){if(requestGeneration===root.generation)root.request(next[0],next[1],next[2],next[3],next[4])})}
   }
-  function refresh(includeLocal) {
-    if (!settingsLoaded) return
-    if (!remote && includeLocal!==false && !localPending) runLocal("status", [settings.cliPath || "",endpoint+"/"])
-    if (needsLogin) return
-    request("GET", "/api/server", null, function(status, data) {
-      root.receiveServer(status, data)
+  Component {
+    id:httpProcess
+    Process {
+      id:proc
+      property string input:""
+      property string output:""
+      property var callback:null
+      property int requestGeneration:0
+      // -q 必须放在首位，忽略个人 curlrc；不跟随任何重定向，限制协议、时间和响应大小。
+      command:["/usr/bin/curl","-q","--config","-","--silent","--globoff","--no-location","--proto","=http,https","--max-time","15","--max-filesize","1048576","--write-out","\n%{http_code}"]
+      stdinEnabled:true
+      onStarted:{write(input);input="";stdinEnabled=false}
+      stdout:StdioCollector {waitForEnd:true;onStreamFinished:proc.output=text}
+      onExited:function(exitCode){root.finishRequest(proc,exitCode)}
+    }
+  }
+  // 同时覆盖 curl 无法启动的情况，不能让后台轮询永久占用请求槽。
+  Timer {id:timeout;interval:16000;onTriggered:if(root.pendingHTTP){var proc=root.pendingHTTP;proc.signal(9);root.finishRequest(proc,-1)}}
+  function refresh() {
+    request("GET","/api/info",null,function(status,data){
+      root.reachable=status===200;root.unsupportedServer=status===404 || (status===200 && !Model.supportedVersion(data.Version))
+      if(status!==200){root.connected=false;root.info={};root.traffic=null;root.serverConfig={};root.configFileStatus=null;root.lastError=root.t(root.unsupportedServer ? "unsupported" : "offline");return}
+      root.updateSnapshot("publicInfo",data)
+      root.needsLogin=!!data.requiresAuth && !root.token
+      if(root.needsLogin || root.unsupportedServer){root.connected=false;root.info={};root.traffic=null;root.serverConfig={};root.configFileStatus=null;return}
+      Qt.callLater(function(){root.request("GET","/api/server",null,root.receiveServer,true)})
     },true)
   }
-  function receiveServer(status, data) {
-    // 按 v1.3.6 服务协议校验版本和接口可用性。
-    root.unsupportedServer = status === 404 || (status === 200 && (!data || !Model.supportedVersion(data.Version)))
-    root.connected = status === 200 && !root.unsupportedServer
-    if (root.connected) {
-      root.updateSnapshot("info",data); root.updateSnapshot("traffic",data.traffic || null); root.lastError = ""
-      if (root.desiredExternalAccess !== null && data.externalAccess === root.desiredExternalAccess) {root.desiredExternalAccess=null;root.tell("done")}
-      if (root.page === "config") Qt.callLater(root.loadConfig)
-    } else { root.info={}; root.traffic=null; root.lastError = root.t(status === 401 ? "needs_login" : root.unsupportedServer ? "unsupported" : "offline") }
+  function receiveServer(status,data) {
+    connected=status===200 && !unsupportedServer && Array.isArray(data.localIPs) && data.localIPs.every(function(ip){return typeof ip==="string"})
+    if(connected){updateSnapshot("info",data);updateSnapshot("traffic",data.traffic || null);lastError=""
+      if(desiredExternalAccess!==null && data.externalAccess===desiredExternalAccess){desiredExternalAccess=null;tell("done")}
+      if(page==="config")Qt.callLater(loadConfig)
+    }else{info={};traffic=null;serverConfig={};configFileStatus=null;lastError=stateText}
   }
-  function refreshTraffic() {
-    if (!connected || !traffic || busy) return
-    request("GET", "/api/server/traffic", null, function(status,data) {
-      if (status===200) root.updateSnapshot("traffic",data)
-      else { root.traffic=null; if (status!==404) {root.connected=false;root.lastError=root.t("offline")} }
-    },true)
-  }
-  // 更改监听范围后等待 HTTP 服务重新就绪，再更新开关和阅读地址。
+  function refreshTraffic(){if(connected && !busy)request("GET","/api/server/traffic",null,function(status,data){if(status===200)root.updateSnapshot("traffic",data);else root.traffic=null},true)}
+  function loadConfig(){if(connected)request("GET","/api/configs",null,function(status,data){root.updateSnapshot("serverConfig",status===200 ? data : {});if(status===200){Qt.callLater(function(){root.request("GET","/api/configs/status",null,function(code,value){root.updateSnapshot("configFileStatus",code===200 ? value.current : null)},true)})}else root.configFileStatus=null},true)}
   function setExternalAccess(enabled) {
-    if (remote || busy || !connected) return
-    request("PATCH", "/api/configs", {DisableLAN:!enabled}, function(status,data) {
-      if(status===200) {root.desiredExternalAccess=enabled;root.reconnectAttempts=0;root.connected=false;root.info={};root.serverConfig={};root.configFileStatus=null}
+    if(!localConnection || busy || !connected || serverConfig.ReadOnlyMode!==false)return
+    request("PATCH","/api/configs",{DisableLAN:!enabled},function(status){
+      if(status===200){root.desiredExternalAccess=enabled;root.reconnectAttempts=0;root.connected=false}
       else root.tell(status===403 ? "config_locked" : "http_error")
     })
   }
-  Timer {
-    interval:500;running:root.desiredExternalAccess!==null;repeat:true
-    onTriggered:{
-      if(root.pendingHTTP)return
-      if(++root.reconnectAttempts>30){root.desiredExternalAccess=null;root.tell("http_error");return}
-      root.refresh()
-    }
-  }
-  function loadConfig() {
-    if (!connected) return
-    request("GET", "/api/configs", null, function(status,data) {
-      if(status===200) {root.updateSnapshot("serverConfig",data);Qt.callLater(root.loadConfigFileStatus)}
-    },true)
-  }
-  function loadConfigFileStatus() {
-    if(!connected)return
-    request("GET","/api/configs/status",null,function(status,data){root.updateSnapshot("configFileStatus",status===200 && data.current ? data.current : null)},true)
-  }
-  function login(username, password) {
-    request("POST", "/api/login", {username:username,password:password}, function(status,data) {
-      if(status===200 && data.token) {root.token=data.token;root.needsLogin=false;root.lastError="";Qt.callLater(root.refresh)}
-      else root.tell("needs_login")
-    })
-  }
-  function logout() { clearConnection();token="";needsLogin=true }
-  function firewall(action) {
-    if(remote || busy)return
-    runLocal("firewall-"+action,[endpoint+"/"])
-  }
-  function control(action) {
-    if (remote || busy) return
-    autoStartDone=true
-    runLocal(action,[endpoint + "/",settings.cliPath || "",settings.libraryDir || ""])
-  }
-  function runLocal(action, args) {
-    if (remote && action!=="save-settings") return
-    if (localPending) {
-      if(localAction==="status" && action!=="status" && !queuedLocal){queuedLocal={action:action,args:args,input:localInput};localInput=""}
-      return
-    }
-    localAction=action;localPending=true
-    localProc.command=["bash",runner,action].concat(args)
-    localProc.running=true
-  }
-  function finishLocal(raw, code) {
-    var action=localAction, data={}
-    localPending=false
-    try {data=JSON.parse(raw)} catch(e){data={error:"command_failed"}}
-    if(action==="autostart" && ((!data.error && code===0) || data.error==="autostart_exhausted"))autoStartDone=true
-    if(data.error || code!==0) {tell(data.error || "command_failed"); drainLocal();return}
-    if(action==="status") {
-      updateSnapshot("localInfo",data);localChecked=true
-    }
-    else {
-      if(action==="save-settings") settingsFile.reload()
-      tell("done");afterCommand.restart()
-    }
-    drainLocal()
-  }
-  function drainLocal() {
-    if(!localPending && queuedLocal){var next=queuedLocal;queuedLocal=null;localInput=next.input;runLocal(next.action,next.args)}
-  }
-  // 只在本机模式加载后尝试，关闭选项或手动控制立即取消后续重试。
-  Timer {
-    interval:10000;repeat:true
-    running:root.settingsLoaded && root.settings.autoStart===true && !root.remote && !root.autoStartDone && root.autoStartAttempts<3 && !root.localPending
-    onTriggered:{
-      if(root.busy || root.localPending)return
-      root.autoStartAttempts++
-      root.runLocal("autostart",[root.endpoint+"/",root.settings.cliPath || "",root.settings.libraryDir || ""])
-    }
-  }
-  Timer { id: afterCommand; interval: 100; onTriggered: root.refresh() }
-  Timer { id: toastTimer; interval: 3500; onTriggered: root.notice="" }
-  Timer { interval: 30000; running: root.settingsLoaded; repeat: true; onTriggered: if(!root.busy)root.refresh() }
-  Timer { interval: 2000; running: root.active && root.connected; repeat: true; onTriggered: {if(root.busy || root.pendingHTTP)return;if(root.page==="config")root.refresh(false);else root.refreshTraffic()} }
-  Process {
-    id: httpProc
-    stdinEnabled: true
-    onStarted: {write(root.httpInput);root.httpInput="";stdinEnabled=false}
-    stdout: StdioCollector { id:httpOutput; waitForEnd:true }
-    onExited: function(code) {stdinEnabled=true;Qt.callLater(function(){root.finishHTTP(httpOutput.text,code)})}
-  }
-  Process {
-    id: localProc
-    stdinEnabled:true
-    onStarted: {write(root.localInput);root.localInput="";stdinEnabled=false}
-    stdout: StdioCollector {id:localOutput;waitForEnd:true}
-    onExited: function(code){stdinEnabled=true;Qt.callLater(function(){root.finishLocal(localOutput.text,code)})}
-  }
+  function login(username,password){request("POST","/api/login",{username:username,password:password},function(status,data){if(status===200 && data.token){root.token=data.token;root.needsLogin=false;Qt.callLater(root.refresh)}else root.tell("needs_login")})}
+  function logout(){clearConnection();token="";sessions[sessionKey]={};needsLogin=true;Qt.callLater(refresh)}
+  Timer {interval:500;running:root.desiredExternalAccess!==null;repeat:true;onTriggered:{if(root.pendingHTTP)return;if(++root.reconnectAttempts>30){root.desiredExternalAccess=null;root.tell("http_error")}else root.refresh()}}
+  Timer {id:toastTimer;interval:3500;onTriggered:root.notice=""}
+  Timer {interval:30000;running:root.settingsLoaded;repeat:true;onTriggered:if(!root.busy)root.refresh()}
+  Timer {interval:2000;running:root.active && root.connected;repeat:true;onTriggered:{if(root.busy || root.pendingHTTP)return;if(root.page==="config")root.refresh();else root.refreshTraffic()}}
 }

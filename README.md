@@ -24,44 +24,29 @@ After installation, click the Comigo icon in the status bar to open the panel.
 omarchy plugin remove yumenaka.comigo
 ```
 
-Removal preserves settings and books and does not stop the service. Stop it through the plugin first if needed.
+## Usage and requirements
 
-## Dependencies
+Requires Omarchy with Shell plugin support, curl 8.4 or later, and a running Comigo v1.3.7 or later with the `/api/info` endpoint. The plugin calls REST through curl; no local `comi` binary is required. Requests do not follow HTTP redirects: enter the final service URL, including its BasePath. Each request has a 15-second timeout and a 1 MiB response limit. Passwords and tokens pass through standard input, never command arguments or temporary files.
 
-- **Plugin:** Omarchy with shell plugin support, `bash`, and `curl`.
-- **Comigo:** local mode requires the `comi` binary **v1.3.6 or later**; if missing, **Service** links to the [GitHub project](https://github.com/yumenaka/comigo) and [comigo.xyz](https://comigo.xyz/) (recommended in mainland China). Install Comigo separately; the plugin does not download or install binaries. Remote mode requires a running server of the same minimum version, with no local binary needed.
-- **Optional features:** firewall controls use `ufw`, `ip`, and `pkexec`.
+1. Install and start Comigo outside the plugin: [GitHub](https://github.com/yumenaka/comigo) or [comigo.xyz](https://comigo.xyz/) (recommended for mainland China).
+2. Enter the full service URL in Settings, such as `http://127.0.0.1:1234/` or `https://reader.example/books/`.
+3. If password protection is enabled, sign in within the plugin, then open the reading link or scan the QR code. Tokens stay in memory and are isolated by service URL.
 
-## Usage
+When the service is unavailable, opening the panel defaults to Settings. Plugin settings are saved by the Omarchy host.
 
-### Local mode (default)
+## Features
 
-1. If Comigo is missing, follow a source linked in **Service** to install it separately. Existing installations are detected automatically; if detection fails, set the binary path in **Settings**.
-2. After installation, refresh the panel and click **Start**.
-3. If authentication is required, log in through **Settings**. Then open the reading link or scan the QR code on **Overview**.
+- Four pages: Overview, Status, Service and Settings. Reading links, QR codes, server IP selection, version, book and connection counts, transfer rates and totals.
+- The external access switch is shown only when the saved service URL host is `127.0.0.1` or `localhost`, to avoid losing remote access with no way to restore it. Read-only mode blocks service setting changes. Configuration file information is read-only; use the Comigo website for detailed settings.
+- The Service page links to GitHub and comigo.xyz (recommended for mainland China). The plugin does not install binaries, manage Comigo processes, systemd or firewall rules, or check for updates.
+- Configure startup in Server control in Comigo's web settings or CLI. It defaults to off and uses a systemd user service on Linux, starting after user login. Start a stopped service outside the plugin.
+- Switch between English, Chinese and Japanese in the sidebar; `1`–`4` select pages, `r` refreshes, and `Esc` closes the panel.
 
-To choose a library, enter its directory in **Settings**, save, and restart the local service; leave it empty to use Comigo's defaults. Enable automatic startup on **Service** to start Comigo when you log in to the desktop.
+Closing or removing the plugin does not stop Comigo or delete libraries. If connection fails, check that the service is running and verify its full URL and credentials.
 
-### Remote mode
+## Manual
 
-1. Switch to **Remote** in the sidebar.
-2. Enter the remote Comigo server's full URL in **Settings**, such as `https://reader.example/books/`, and click **Save**.
-3. Log in if the server requires authentication, then open the reading link or scan the QR code on **Overview**.
-
-Switching modes does not start or stop a service.
-
-## Other features
-
-- **Status:** view the version, book and connection counts, transfer rates, and totals.
-- **LAN reading:** enable external access in local **Settings**, then select an available IP on **Overview**. Use the firewall buttons to allow the port if needed.
-- **Service management:** stop, restart, and view logs in local mode. The plugin only controls processes it started. The Service page provides GitHub and comigo.xyz (recommended in mainland China) links in both modes.
-- **Language and shortcuts:** select a language in the sidebar; use `1`–`4` to switch pages, `r` to refresh, and `Esc` to close the panel.
-
-Closing the panel does not stop Comigo. If a connection fails, check that the service is running, verify its URL, and, in local mode, inspect the logs on **Service**.
-
-## Development
-
-Use `bash install.sh` to install or update from a source checkout; this restarts Omarchy Shell. Remove a source-installed copy with `bash install.sh --uninstall`. See Comigo's built-in `/manual/en-US/comigo-omarchy` manual for details.
+See the [Comigo manual](https://comigo.xyz/manual/comigo-omarchy) for details.
 
 ## License and acknowledgments
 
