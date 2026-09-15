@@ -7,33 +7,47 @@ Page {
   title:t("nav_config")
   subtitle:svc ? svc.serviceName : ""
   readonly property var currentFile: svc && svc.connected && svc.configFileStatus ? svc.configFileStatus : ({})
-  editing:endpoint.activeFocus || username.activeFocus || password.activeFocus
-  Connections {target:root.svc;function onConnectionKeyChanged(){username.clear();password.clear();username.dirty=false;password.dirty=false}}
-  Card {
-    objectName:"accessCard"
-    visible:root.svc && root.svc.localConnection
-    width:parent.width
-    Controls.Switch {
-      id:accessSwitch
-      objectName:"externalAccess"
-      text:root.t("external_access")
-      checked:root.svc && root.svc.info.externalAccess===true
-      enabled:root.svc && root.svc.connected && !root.svc.busy && typeof root.svc.info.externalAccess==="boolean" && root.svc.serverConfig.ReadOnlyMode===false
-      onClicked:{root.svc.setExternalAccess(!root.svc.info.externalAccess);checked=Qt.binding(function(){return root.svc && root.svc.info.externalAccess===true})}
-      palette.windowText:Util.alpha(Color.popups.text,1)
-      font.family:Style.font.family;font.pixelSize:Style.font.bodySmall
+  property Item dialogHost: root
+  property bool panelOpen: true
+  readonly property Item loginFocus:loginDialog.visible ? username : null
+  property bool loginPrompted:false
+  readonly property bool loginRequired:svc && svc.reachable && svc.needsLogin && !svc.unsupportedServer && !svc.busy
+  editing:endpoint.activeFocus || loginDialog.visible
+  // 每次打开面板或保存地址只提示一次，取消后不被轮询打扰。
+  function promptLogin(){
+    if(panelOpen && visible && loginRequired && !loginPrompted){loginPrompted=true;loginDialog.open()}
+  }
+  onLoginRequiredChanged:Qt.callLater(promptLogin)
+  onPanelOpenChanged:{if(!panelOpen){loginDialog.close();loginPrompted=false}else Qt.callLater(promptLogin)}
+  onVisibleChanged:{if(!visible)loginDialog.close();else Qt.callLater(promptLogin)}
+  Component.onCompleted:Qt.callLater(promptLogin)
+  Connections {
+    target:root.svc
+    function onConnectionKeyChanged(){loginDialog.close();root.loginPrompted=false;Qt.callLater(root.promptLogin)}
+    function onLoginFinished(success,errorKey){
+      if(!loginDialog.visible)return
+      loginDialog.submitting=false
+      if(success)loginDialog.close()
+      else {loginDialog.errorKey=errorKey;password.forceActiveFocus()}
     }
-    InfoRow {width:parent.width;label:root.t("listen_address");value:root.svc ? root.svc.info.listenAddress || "—" : "—"}
-    Text {width:parent.width;text:root.t("external_note");wrapMode:Text.WordWrap;color:Util.alpha(Color.popups.text,0.55);font.family:Style.font.family;font.pixelSize:Style.font.caption}
+  }
+  Card {
+    objectName:"connectionCard"
+    width:parent.width
+    InfoRow {objectName:"connectionState";width:parent.width;label:root.t("server_status");value:root.svc ? root.svc.stateText : root.t("offline");valueBold:true}
+    Text {objectName:"connectionHint";width:parent.width;text:root.svc ? root.svc.connectionHint : root.t("offline_note");textFormat:Text.PlainText;wrapMode:Text.WordWrap;color:Util.alpha(Color.popups.text,0.7);font.family:Style.font.family;font.pixelSize:Style.font.bodySmall}
+    InfoRow {objectName:"connectionAddress";width:parent.width;label:root.t("endpoint");value:root.svc ? root.svc.endpoint+"/" : "—"}
+    Action {objectName:"openService";text:root.t("open");visible:root.svc && root.svc.reachable;onClicked:root.svc.browse(root.svc.endpoint+"/")}
   }
   Card {
     width:parent.width
     Field {id:endpoint;objectName:"serverURL";settingKey:"serverURL";label:root.t("endpoint");sourceValue:root.svc ? root.svc.settings.serverURL : ""}
     Row {
       spacing:Style.space(8)
-      Action {text:root.t("save");primary:true;enabled:root.svc && !root.svc.busy;objectName:"saveSettings";onClicked:root.svc.saveSettings(endpoint.change())}
+      Action {text:root.t(root.svc && root.svc.connected ? "disconnect" : "connect");enabled:!!root.svc;objectName:"saveSettings";onClicked:{if(root.svc.connected)root.svc.disconnectServer();else {root.loginPrompted=false;root.svc.connectServer(endpoint.change());Qt.callLater(root.promptLogin)}}}
     }
     Text {width:parent.width;text:root.t("api_config_note");textFormat:Text.PlainText;wrapMode:Text.WordWrap;color:Util.alpha(Color.popups.text,0.55);font.family:Style.font.family;font.pixelSize:Style.font.caption}
+    Action {objectName:"logout";text:root.t("logout");visible:root.svc && root.svc.token!=="";enabled:root.svc && !root.svc.busy;onClicked:{root.loginPrompted=true;root.svc.logout()}}
   }
   Card {
     width:parent.width
@@ -43,20 +57,49 @@ Page {
     Text {width:parent.width;visible:!!root.currentFile.path && root.currentFile.exists===false;text:root.t("config_missing");wrapMode:Text.WordWrap;color:Color.urgent;font.family:Style.font.family;font.pixelSize:Style.font.caption}
     Action {text:root.t("manage_config");enabled:root.svc && !!root.svc.endpoint;onClicked:root.svc.browse(root.svc.endpoint+"/settings#config-container")}
   }
-  Card {
-    width:parent.width
-    objectName:"loginCard"
-    // 收到认证要求或已有登录会话时才允许操作，匿名连接禁用整组控件。
-    enabled:root.svc && !root.svc.busy && (root.svc.needsLogin || root.svc.token!=="")
-    opacity:enabled ? 1 : 0.5
-    Text {text:root.t("login");color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
-    Field {id:username;objectName:"username";label:root.t("username")}
-    Field {id:password;objectName:"password";label:root.t("password");echoMode:TextInput.Password;onAccepted:loginButton.clicked()}
-    Row {spacing:Style.space(8)
-      Action {id:loginButton;text:root.t("login");primary:true;enabled:root.svc && !root.svc.busy && !!root.svc.endpoint && password.text!=="";onClicked:{if(!enabled)return;root.svc.login(username.text,password.text);password.clear()}}
-      Action {text:root.t("logout");enabled:root.svc && root.svc.token!=="";onClicked:root.svc.logout()}
+  Controls.Dialog {
+    id:loginDialog
+    objectName:"loginDialog"
+    parent:root.dialogHost
+    anchors.centerIn:parent
+    width:Math.min(parent.width,Style.space(380))
+    modal:true
+    focus:true
+    popupType:Controls.Popup.Item
+    closePolicy:Controls.Popup.CloseOnEscape | Controls.Popup.CloseOnPressOutside
+    padding:Style.space(16)
+    property bool submitting:false
+    property string errorKey:""
+    // 显式归还焦点；所有关闭路径都清空凭据，提交后立即清空密码。
+    onOpened:{errorKey="";submitting=false;username.forceActiveFocus()}
+    onClosed:{username.clear();password.clear();errorKey="";submitting=false;if(root.panelOpen && root.visible)endpoint.forceActiveFocus()}
+    function submit(){
+      if(!submitLogin.enabled)return
+      errorKey="";submitting=true
+      root.svc.login(username.text,password.text)
+      password.clear()
     }
-    Text {width:parent.width;text:root.t("session_note");wrapMode:Text.WordWrap;color:Util.alpha(Color.popups.text,0.55);font.family:Style.font.family;font.pixelSize:Style.font.caption}
+    background:Rectangle {color:Color.popups.background;radius:Style.cornerRadius;border.width:1;border.color:Color.accent}
+    Controls.Overlay.modal:Item {
+      // 遮罩只绘制在插件面板内，弹窗由 Qt 拦截底层输入。
+      Rectangle {
+        readonly property point origin:root.dialogHost.mapToItem(parent,0,0)
+        x:origin.x;y:origin.y;width:root.dialogHost.width;height:root.dialogHost.height
+        color:Util.alpha(Color.popups.background,0.7)
+      }
+    }
+    header:Text {text:root.t("login_title");width:loginDialog.width; padding:Style.space(16);bottomPadding:0;wrapMode:Text.WordWrap;color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
+    contentItem:Column {
+      spacing:Style.space(10)
+      Field {id:username;objectName:"username";label:root.t("username");enabled:!loginDialog.submitting;onAccepted:password.forceActiveFocus()}
+      Field {id:password;objectName:"password";label:root.t("password");echoMode:TextInput.Password;enabled:!loginDialog.submitting;onAccepted:loginDialog.submit()}
+      Text {objectName:"loginError";width:parent.width;visible:loginDialog.errorKey!=="";text:visible ? root.t(loginDialog.errorKey) : "";textFormat:Text.PlainText;wrapMode:Text.WordWrap;color:Color.urgent;font.family:Style.font.family;font.pixelSize:Style.font.caption}
+      Row {spacing:Style.space(8)
+        Action {id:submitLogin;objectName:"submitLogin";text:root.t(loginDialog.submitting ? "logging_in" : "login");primary:true;enabled:!loginDialog.submitting && root.svc && !root.svc.busy && !!root.svc.endpoint && password.text!=="";onClicked:loginDialog.submit()}
+        Action {objectName:"cancelLogin";text:root.t("cancel");onClicked:loginDialog.close()}
+      }
+      Text {width:parent.width;text:root.t("session_note");wrapMode:Text.WordWrap;color:Util.alpha(Color.popups.text,0.55);font.family:Style.font.family;font.pixelSize:Style.font.caption}
+    }
   }
   component Field: Controls.TextField {
     id:field
@@ -66,6 +109,7 @@ Page {
     property bool dirty:false
     // 未编辑字段跟随外部设置，草稿保留至用户保存。
     function syncValue() {
+      if(!settingKey)return
       if(text===sourceValue)dirty=false
       if(!dirty && !activeFocus && text!==sourceValue)text=sourceValue
     }

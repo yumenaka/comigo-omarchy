@@ -15,6 +15,7 @@ Item {
   property bool active: false
   property string page: "home"
   property bool connected: false
+  property bool manuallyDisconnected: false
   property bool reachable: false
   property bool unsupportedServer: false
   property bool needsLogin: false
@@ -35,7 +36,7 @@ Item {
   property var desiredExternalAccess: null
   property int reconnectAttempts: 0
   readonly property string endpoint: String(settings.serverURL || "").replace(/\/+$/, "")
-  // 仅允许通过已保存的本机连接切换对外服务，避免远程关闭后无法恢复。
+  // 仅允许通过已保存的本机连接切换局域网共享，避免远程关闭后无法恢复。
   readonly property bool localConnection: ["127.0.0.1","localhost"].indexOf(Model.urlHost(endpoint).toLowerCase())>=0
   readonly property string connectionKey: endpoint
   readonly property string serviceName: "Comigo"
@@ -48,7 +49,9 @@ Item {
   readonly property string readingURL: selectedReadingIP && readingIPs.indexOf(selectedReadingIP)>=0 ? Model.withHost(endpoint+"/",selectedReadingIP) : endpoint+"/"
   readonly property string currentReadingIP: Model.urlHost(readingURL)
   readonly property string browserURL: readingURL
-  readonly property string stateText: needsLogin ? t("needs_login") : connected ? t("running") : unsupportedServer ? t("unsupported") : t("offline")
+  readonly property string connectionState: manuallyDisconnected ? "disconnected" : desiredExternalAccess!==null ? "reconnecting" : connected ? "running" : unsupportedServer ? "unsupported" : !reachable ? (pendingHTTP!==null ? "connecting" : "offline") : needsLogin ? "needs_login" : "http_error"
+  readonly property string stateText: t(connectionState)
+  readonly property string connectionHint: t(connectionState+"_note")
   readonly property var hostEntry: findHostEntry(shell ? shell.barConfig : {})
   onHostEntryChanged: loadSettings()
   onReadingIPsChanged: if(readingIPs.indexOf(selectedReadingIP)<0)selectedReadingIP=""
@@ -87,12 +90,22 @@ Item {
   function saveSettings(values) {
     var next=Object.assign({},settings,values)
     next={serverURL:String(next.serverURL || "").trim(),language:next.language || "auto"}
-    if(!validURL(next.serverURL) || ["auto","en","zh","ja"].indexOf(next.language)<0){tell("invalid_settings");return}
-    if(!shell){tell("command_failed");return}
-    shell.updateEntryInline("yumenaka.comigo",Object.assign({},hostEntry,{comigo:next}))
-    loadSettings()
-    if(JSON.stringify(settings)!==JSON.stringify(next)){tell("command_failed");return}
+    if(!validURL(next.serverURL) || ["auto","en","zh","ja"].indexOf(next.language)<0){tell("invalid_settings");return false}
+    if(settings.serverURL===next.serverURL && settings.language===next.language){tell("done");return true}
+    // 宿主配置快照稍后才回传；不能同步读回旧快照并误报保存失败。
+    if(!shell || !shell.updateEntryInline("yumenaka.comigo",Object.assign({},hostEntry,{comigo:next}))){tell("settings_save_failed");return false}
+    updateSnapshot("settings",next)
     tell("done")
+    return true
+  }
+  // 主动断开停止请求并使在途响应失效；只有点击连接才恢复通信。
+  function disconnectServer(){manuallyDisconnected=true;clearConnection();needsLogin=false}
+  function connectServer(values){
+    if(!saveSettings(values))return
+    // 点击连接立即重试，取消旧请求，避免忙碌时按钮可点却没有响应。
+    clearConnection()
+    manuallyDisconnected=false
+    refresh()
   }
   function setLanguage(value){saveSettings({language:value})}
   // 地址切换／退出时先使旧响应失效，再清空私有状态。
@@ -111,11 +124,11 @@ Item {
   }
   onConnectionKeyChanged: switchConnection()
   onActiveChanged: if(active && settingsLoaded)refresh()
-  onPageChanged: if(active && page==="config")loadConfig()
+  onPageChanged: if(active && (page==="config" || page==="service"))loadConfig()
 
   // 单个请求加有限排队，切换地址后旧回调不能更新当前界面。
   function request(method,path,body,callback,background) {
-    if(!settingsLoaded || !endpoint)return false
+    if(manuallyDisconnected || !settingsLoaded || !endpoint)return false
     if(pendingHTTP){if(!background && httpBackground && !queuedRequest)queuedRequest=[method,path,body,callback,false];return false}
     // curl 配置从标准输入读取；地址、密码和令牌均不进入命令行或临时文件。
     var input="url = "+curlQuote(endpoint+path)+"\nrequest = "+curlQuote(method)+"\nheader = \"Content-Type: application/json\"\n"
@@ -175,7 +188,7 @@ Item {
     connected=status===200 && !unsupportedServer && Array.isArray(data.localIPs) && data.localIPs.every(function(ip){return typeof ip==="string"})
     if(connected){updateSnapshot("info",data);updateSnapshot("traffic",data.traffic || null);lastError=""
       if(desiredExternalAccess!==null && data.externalAccess===desiredExternalAccess){desiredExternalAccess=null;tell("done")}
-      if(page==="config")Qt.callLater(loadConfig)
+      if(page==="config" || page==="service")Qt.callLater(loadConfig)
     }else{info={};traffic=null;serverConfig={};configFileStatus=null;lastError=stateText}
   }
   function refreshTraffic(){if(connected && !busy)request("GET","/api/server/traffic",null,function(status,data){if(status===200)root.updateSnapshot("traffic",data);else root.traffic=null},true)}
@@ -187,10 +200,19 @@ Item {
       else root.tell(status===403 ? "config_locked" : "http_error")
     })
   }
-  function login(username,password){request("POST","/api/login",{username:username,password:password},function(status,data){if(status===200 && data.token){root.token=data.token;root.needsLogin=false;Qt.callLater(root.refresh)}else root.tell("needs_login")})}
+  signal loginFinished(bool success,string errorKey)
+  // 登录结果交给发起表单展示；传输错误不冒充账号密码错误。
+  function login(username,password){
+    if(busy || !settingsLoaded || !endpoint){loginFinished(false,"http_error");return}
+    request("POST","/api/login",{username:username,password:password},function(status,data){
+      var success=status===200 && typeof data.token==="string" && data.token!==""
+      if(success){root.token=data.token;root.needsLogin=false;Qt.callLater(root.refresh)}
+      root.loginFinished(success,success ? "" : status===401 ? "login_failed" : "http_error")
+    })
+  }
   function logout(){clearConnection();token="";sessions[sessionKey]={};needsLogin=true;Qt.callLater(refresh)}
   Timer {interval:500;running:root.desiredExternalAccess!==null;repeat:true;onTriggered:{if(root.pendingHTTP)return;if(++root.reconnectAttempts>30){root.desiredExternalAccess=null;root.tell("http_error")}else root.refresh()}}
   Timer {id:toastTimer;interval:3500;onTriggered:root.notice=""}
-  Timer {interval:30000;running:root.settingsLoaded;repeat:true;onTriggered:if(!root.busy)root.refresh()}
-  Timer {interval:2000;running:root.active && root.connected;repeat:true;onTriggered:{if(root.busy || root.pendingHTTP)return;if(root.page==="config")root.refresh();else root.refreshTraffic()}}
+  Timer {interval:30000;running:root.settingsLoaded && !root.manuallyDisconnected;repeat:true;onTriggered:if(!root.busy)root.refresh()}
+  Timer {interval:2000;running:root.active && root.connected;repeat:true;onTriggered:{if(root.busy || root.pendingHTTP)return;if(root.page==="config" || root.page==="service")root.refresh();else root.refreshTraffic()}}
 }

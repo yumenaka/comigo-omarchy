@@ -12,7 +12,6 @@ Panel {
   property var serviceOverride: null
   readonly property var svc: serviceOverride || (bar && bar.shell ? bar.shell.serviceFor(moduleName) : null)
   property string page:"home"
-  readonly property bool qrReady: homePage.qrStatus === Image.Ready
   readonly property var currentPage: page==="status" ? statusPage : page==="service" ? serverPage : page==="config" ? settingsPage : homePage
   readonly property var pageNames:["home","status","service","config"]
   implicitWidth:button.implicitWidth
@@ -20,12 +19,8 @@ Panel {
   function t(key) {return svc ? svc.t(key) : key}
   function goto(name) {if(pageNames.indexOf(name)>=0){page=name}}
   function cyclePage(direction) {goto(pageNames[(pageNames.indexOf(page)+direction+pageNames.length)%pageNames.length])}
-  // 离线打开或连接中断时进入设置；不干扰用户随后手动选择页面。
+  // 仅在打开且未连接时进入设置；面板打开期间断线保留当前页面。
   onOpenedChanged: if(opened && (!svc || !svc.connected))goto("config")
-  Connections {
-    target:root.svc
-    function onConnectedChanged(){if(root.opened && !root.svc.connected)root.goto("config")}
-  }
   Binding {target:root.svc;property:"active";value:root.opened;when:!!root.svc}
   Binding {target:root.svc;property:"page";value:root.page;when:!!root.svc}
   // 只暴露无凭据的诊断快照，便于安装后检查真正加载的状态。
@@ -52,7 +47,8 @@ Panel {
     owner:root
     bar:root.bar
     open:root.opened
-    focusTarget:keys
+    // 自动登录框先于宿主面板完成打开时，焦点也应落到账号输入框。
+    focusTarget:settingsPage.loginFocus || keys
     contentWidth:fittedContentWidth(Style.space(680))
     contentHeight:fittedContentHeight(Style.space(600),Style.space(600))
     PanelKeyCatcher {
@@ -118,7 +114,7 @@ Panel {
         HomePage {id:homePage;anchors.fill:parent;visible:root.page==="home";svc:root.svc}
         StatusPage {id:statusPage;anchors.fill:parent;visible:root.page==="status";svc:root.svc}
         ServerPage {id:serverPage;anchors.fill:parent;visible:root.page==="service";svc:root.svc}
-        SettingsPage {id:settingsPage;anchors.fill:parent;visible:root.page==="config";svc:root.svc}
+        SettingsPage {id:settingsPage;anchors.fill:parent;visible:root.page==="config";svc:root.svc;dialogHost:keys;panelOpen:root.opened}
         Rectangle {
           anchors.horizontalCenter:parent.horizontalCenter
           anchors.bottom:parent.bottom

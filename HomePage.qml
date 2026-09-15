@@ -4,7 +4,6 @@ import qs.Commons
 Page {
   id:root
   // 阅读地址与操作置于二维码下方。
-  readonly property int qrStatus: qr.status
   title:t("nav_home")
   subtitle:svc ? svc.serviceName : ""
   Card {
@@ -38,7 +37,7 @@ Page {
     }
     Text {text:root.t("reading");color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
     Text {width:parent.width;text:root.svc ? root.svc.readingURL || "—" : "—";textFormat:Text.PlainText;wrapMode:Text.WrapAnywhere;color:Color.accent;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall}
-    Row {spacing:Style.space(8);Action {text:root.t("open");primary:true;enabled:root.svc && !!root.svc.browserURL;onClicked:root.svc.browse(root.svc.browserURL)} Action {text:root.t("copy");enabled:root.svc && !!root.svc.readingURL;onClicked:root.svc.copy(root.svc.readingURL)}}
+    Row {spacing:Style.space(8);Action {text:root.t("open");enabled:root.svc && !!root.svc.browserURL;onClicked:root.svc.browse(root.svc.browserURL)} Action {text:root.t("copy");enabled:root.svc && !!root.svc.readingURL;onClicked:root.svc.copy(root.svc.readingURL)}}
   }
   Card {
     width:parent.width

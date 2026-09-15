@@ -32,12 +32,12 @@ Requires Omarchy with Shell plugin support, curl 8.4 or later, and a running Com
 2. Enter the full service URL in Settings, such as `http://127.0.0.1:1234/` or `https://reader.example/books/`.
 3. If password protection is enabled, sign in within the plugin, then open the reading link or scan the QR code. Tokens stay in memory and are isolated by service URL.
 
-When the service is unavailable, opening the panel defaults to Settings. Plugin settings are saved by the Omarchy host.
+Opening the panel while disconnected defaults to Settings; losing the connection while it is open keeps the current page. The settings button shows Disconnect when connected and Connect otherwise. It remains enabled and fully opaque while busy; Connect cancels the previous request and retries immediately. Disconnect stops plugin requests until Connect is clicked; it does not stop the Comigo service. Plugin settings are saved by the Omarchy host. Settings shows the connection status, guidance and service URL at the top, with a browser button when the service is reachable. Settings has no login button or login heading. Opening the plugin or saving the connection URL automatically prompts for authentication when required. Canceling suppresses repeated prompts from polling until the plugin is reopened or the URL is saved again. Sign out remains available when logged in. The account/password dialog is titled “Log in (if an account and password are set)”. It closes on success and shows failures inside. Cancel, Escape, or an outside click dismisses it; submission or dismissal clears the password.
 
 ## Features
 
 - Four pages: Overview, Status, Service and Settings. Reading links, QR codes, server IP selection, version, book and connection counts, transfer rates and totals.
-- The external access switch is shown only when the saved service URL host is `127.0.0.1` or `localhost`, to avoid losing remote access with no way to restore it. Read-only mode blocks service setting changes. Configuration file information is read-only; use the Comigo website for detailed settings.
+- The LAN sharing switch appears at the top of Service only when the saved service URL host is `127.0.0.1` or `localhost`, to avoid losing remote access with no way to restore it. Read-only mode blocks service setting changes. Configuration file information is read-only; use the Comigo website for detailed settings.
 - The Service page links to GitHub and comigo.xyz (recommended for mainland China). The plugin does not install binaries, manage Comigo processes, systemd or firewall rules, or check for updates.
 - Configure startup in Server control in Comigo's web settings or CLI. It defaults to off and uses a systemd user service on Linux, starting after user login. Start a stopped service outside the plugin.
 - Switch between English, Chinese and Japanese in the sidebar; `1`–`4` select pages, `r` refreshes, and `Esc` closes the panel.
