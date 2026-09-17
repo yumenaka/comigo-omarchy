@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "yumenaka.comigo",
   "name": "Comigo",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "author": "yumenaka",
   "license": "MIT",
   "description": "Comic & Manga reader for Omarchy",
