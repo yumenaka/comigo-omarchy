@@ -18,6 +18,10 @@ omarchy plugin add https://github.com/yumenaka/comigo-omarchy --enable
 
 安装后，点击状态栏中的 Comigo 图标打开面板。
 
+状态栏图标连接时完全不透明，未连接、连接失败或主动断开时使用 Omarchy 的半透明变暗样式（45% 不透明度），仍可点击打开面板。
+
+面板中的 HTTP(S) 阅读地址、服务地址和项目网址均可直接点击，也支持 Tab 聚焦后按 Enter 或空格打开。
+
 ## 卸载
 
 ```bash

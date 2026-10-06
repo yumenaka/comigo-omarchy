@@ -29,7 +29,7 @@ Item {
     renderType: Text.NativeRendering
   }
 
-  Text {
+  LinkText {
     id: valueText
     anchors.right: parent.right
     anchors.left: labelText.right
@@ -38,7 +38,7 @@ Item {
     text: root.value
     // Values include controller fields (path, TUN device, DNS listen, …).
     textFormat: Text.PlainText
-    color: root.valueColor
+    color: isLink ? Color.accent : root.valueColor
     font.family: root.fontFamily
     font.pixelSize: Style.font.bodySmall
     font.bold: root.valueBold

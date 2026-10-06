@@ -29,15 +29,15 @@ Panel {
     function open():void {root.open()}
     function close():void {root.close()}
     function page(name:string):void {root.open();root.goto(name)}
-    function state():string {return JSON.stringify({page:root.page,opened:root.opened,connected:!!root.svc && root.svc.connected,reachable:!!root.svc && root.svc.reachable,version:root.svc ? root.svc.version : "",needsLogin:!!root.svc && root.svc.needsLogin})}
+    function state():string {return JSON.stringify({page:root.page,opened:root.opened,connected:!!root.svc && root.svc.connected,reachable:!!root.svc && root.svc.reachable,version:root.svc ? root.svc.version : "",needsLogin:!!root.svc && root.svc.needsLogin,iconOpacity:button.opacity})}
   }
   BarIconButton {
     id:button
     bar:root.bar
     anchors.fill:parent
     tooltipText:(root.svc ? root.svc.serviceName : "Comigo")+" · "+(root.svc ? root.svc.stateText : "—")
-    // 离线时使用 75% 不透明度，仍可点击打开面板。
-    opacity:root.svc && root.svc.connected ? 1 : 0.75
+    // 未连接时沿用宿主的变暗样式（45% 不透明度），仍可点击打开面板。
+    dimmed:!root.svc || !root.svc.connected
     iconComponent:Component {Image {source:Qt.resolvedUrl("icon.png");fillMode:Image.PreserveAspectFit}}
     onPressed:function(mouseButton){if(mouseButton===Qt.MiddleButton && root.svc)root.svc.refresh();else root.toggle()}
   }
@@ -56,7 +56,8 @@ Panel {
       anchors.fill:parent
       blocked:root.currentPage.editing
       onCloseRequested:root.close()
-      onTabRequested:function(direction){root.switchPanel(direction)}
+      // Tab 先遍历面板内的链接与按钮，让键盘也能打开展示的地址。
+      onTabRequested:function(direction){var next=keys.nextItemInFocusChain(direction>0);if(next && next!==keys)next.forceActiveFocus(Qt.TabFocusReason);else root.switchPanel(direction)}
       onMoveRequested:function(dx,dy){if(dy)root.currentPage.scrollBy(dy*Style.space(64));else if(dx)root.cyclePage(dx)}
       onTextKey:function(text){var index=Number(text)-1;if(index>=0 && index<root.pageNames.length)root.goto(root.pageNames[index]);else if(text==="r" && root.svc)root.svc.refresh()}
       Item {

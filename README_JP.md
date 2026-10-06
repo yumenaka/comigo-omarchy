@@ -18,6 +18,10 @@ omarchy plugin add https://github.com/yumenaka/comigo-omarchy --enable
 
 インストール後、ステータスバーの Comigo アイコンをクリックしてパネルを開きます。
 
+状態バーのアイコンは接続時に不透明になり、未接続・接続失敗・手動切断時は Omarchy の半透明表示（不透明度45%）になり、引き続きクリックできます。
+
+パネル内の HTTP(S) 閲覧 URL・サービスアドレス・プロジェクトリンクは直接クリックできます。Tab でフォーカスし、Enter またはスペースでも開けます。
+
 ## アンインストール
 
 ```bash

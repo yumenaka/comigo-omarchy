@@ -18,6 +18,10 @@ omarchy plugin add https://github.com/yumenaka/comigo-omarchy --enable
 
 After installation, click the Comigo icon in the status bar to open the panel.
 
+The bar icon is fully opaque when connected. When disconnected, unreachable, or manually disconnected, it uses Omarchy’s dimmed style (45% opacity) and remains clickable.
+
+HTTP(S) reading URLs, service addresses and project links in the panel are directly clickable; focus them with Tab and press Enter or Space to open.
+
 ## Remove
 
 ```bash

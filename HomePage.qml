@@ -36,7 +36,7 @@ Page {
       }
     }
     Text {text:root.t("reading");color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
-    Text {width:parent.width;text:root.svc ? root.svc.readingURL || "—" : "—";textFormat:Text.PlainText;wrapMode:Text.WrapAnywhere;color:Color.accent;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall}
+    LinkText {width:parent.width;text:root.svc ? root.svc.readingURL || "—" : "—";wrapMode:Text.WrapAnywhere;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall}
     Row {spacing:Style.space(8);Action {text:root.t("open");enabled:root.svc && !!root.svc.browserURL;onClicked:root.svc.browse(root.svc.browserURL)} Action {text:root.t("copy");enabled:root.svc && !!root.svc.readingURL;onClicked:root.svc.copy(root.svc.readingURL)}}
   }
   Card {
