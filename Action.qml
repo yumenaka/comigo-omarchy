@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as Controls
 import qs.Commons
+import qs.Commons as Commons
 
 // 所有页面共用轻量按钮，保持鼠标、Tab 和键盘激活行为一致。
 Controls.Button {
@@ -16,7 +17,7 @@ Controls.Button {
     text: root.text
     textFormat: Text.PlainText
     // 可点击文字始终不透明，禁用状态统一由按钮整体 opacity 表达。
-    color: Util.alpha(root.primary ? Color.accent : Color.popups.text, 1)
+    color: Util.alpha(root.primary ? Commons.Color.accent : Commons.Color.popups.text, 1)
     font.family: Style.font.family
     font.pixelSize: Style.font.bodySmall
     horizontalAlignment: Text.AlignHCenter
@@ -25,8 +26,8 @@ Controls.Button {
   }
   background: Rectangle {
     radius: Style.cornerRadius
-    color: Util.alpha(root.primary ? Color.accent : Color.popups.text, root.down ? 0.2 : root.hovered ? 0.12 : root.primary ? 0.1 : 0.025)
+    color: Util.alpha(root.primary ? Commons.Color.accent : Commons.Color.popups.text, root.down ? 0.2 : root.hovered ? 0.12 : root.primary ? 0.1 : 0.025)
     border.width: 1
-    border.color: Util.alpha(root.primary || root.activeFocus ? Color.accent : Color.popups.text, root.activeFocus ? 0.65 : 0.18)
+    border.color: Util.alpha(root.primary || root.activeFocus ? Commons.Color.accent : Commons.Color.popups.text, root.activeFocus ? 0.65 : 0.18)
   }
 }

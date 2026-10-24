@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as Controls
 import qs.Commons
+import qs.Commons as Commons
 
 // 页头和滚动区域固定；切换页面不改变弹窗尺寸。
 Item {
@@ -19,8 +20,8 @@ Item {
     anchors.rightMargin: Style.space(8)
     anchors.top: parent.top
     spacing: Style.space(3)
-    Text { width:parent.width; text:root.title; textFormat:Text.PlainText; color:Color.popups.text; font.family:Style.font.family; font.pixelSize:Style.font.heading; font.bold:true }
-    Text { width:parent.width; text:root.subtitle; textFormat:Text.PlainText; color:Util.alpha(Color.popups.text,0.5); font.family:Style.font.family; font.pixelSize:Style.font.caption; elide:Text.ElideMiddle }
+    Text { width:parent.width; text:root.title; textFormat:Text.PlainText; color:Commons.Color.popups.text; font.family:Style.font.family; font.pixelSize:Style.font.heading; font.bold:true }
+    Text { width:parent.width; text:root.subtitle; textFormat:Text.PlainText; color:Util.alpha(Commons.Color.popups.text,0.5); font.family:Style.font.family; font.pixelSize:Style.font.caption; elide:Text.ElideMiddle }
   }
   Action { id:refresh; anchors.right:parent.right; anchors.top:parent.top; text:"󰑐"; width:Style.space(32); enabled:root.svc && !root.svc.busy; onClicked:root.svc.refresh(); Controls.ToolTip.visible:hovered; Controls.ToolTip.text:root.t("refresh") }
   Flickable {

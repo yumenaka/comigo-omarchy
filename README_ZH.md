@@ -30,7 +30,7 @@ omarchy plugin remove yumenaka.comigo
 
 ## 使用与依赖
 
-需要支持 Shell 插件的 Omarchy、curl 8.4 或以上版本，以及已运行的 Comigo v1.3.7 或以上版本（须提供 `/api/info` 接口）。插件通过 curl 调用 REST，本机无需安装 `comi`。请求不跟随 HTTP 重定向，请填写最终服务地址（含完整 BasePath）；每次请求超时 15 秒、响应上限 1 MiB。密码和令牌通过标准输入传递，不写入进程参数或临时文件。
+需要支持 Shell 插件的 Omarchy、curl 8.4 或以上版本，以及已运行的 Comigo v1.3.10 或以上版本（须提供 `/api/info` 接口）。插件通过 curl 调用 REST，本机无需安装 `comi`。请求不跟随 HTTP 重定向，请填写最终服务地址（含完整 BasePath）；每次请求超时 15 秒、响应上限 1 MiB。密码和令牌通过标准输入传递，不写入进程参数或临时文件。
 
 1. 在插件外安装并启动 Comigo：[GitHub](https://github.com/yumenaka/comigo) 或 [comigo.xyz](https://comigo.xyz/)（中国大陆推荐）。
 2. 在“设置”填写完整服务地址，例如 `http://127.0.0.1:1234/` 或 `https://reader.example/books/`。
@@ -51,6 +51,8 @@ omarchy plugin remove yumenaka.comigo
 ## 使用手册
 
 详细说明见 [Comigo 手册](https://comigo.xyz/manual/comigo-omarchy)。
+
+二维码与 REST 请求共用受限 curl 通道。面板打开时每 2 秒刷新流量，完整状态每 30 秒刷新；进入设置或服务页、完整刷新及操作后查询配置。插件支持宿主提供的全部状态栏区域。完整服务功能请使用 Omarchy 内置状态栏，第三方替代状态栏可能不提供插件服务对象。
 
 ## 许可与致谢
 

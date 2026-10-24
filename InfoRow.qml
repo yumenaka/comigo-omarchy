@@ -1,6 +1,7 @@
 // 界面基础组件参考 omarchy-mihomo-plugin，许可见 THIRD_PARTY_NOTICES.md。
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 // Label on the left, value hard against the right edge. The value shrinks
 // before the label does, so long node names elide instead of pushing the
@@ -10,7 +11,7 @@ Item {
 
   property string label: ""
   property string value: ""
-  property color foreground: Color.popups.text
+  property color foreground: Commons.Color.popups.text
   property color valueColor: foreground
   property string fontFamily: Style.font.family
   property bool valueBold: false
@@ -38,7 +39,7 @@ Item {
     text: root.value
     // Values include controller fields (path, TUN device, DNS listen, …).
     textFormat: Text.PlainText
-    color: isLink ? Color.accent : root.valueColor
+    color: isLink ? Commons.Color.accent : root.valueColor
     font.family: root.fontFamily
     font.pixelSize: Style.font.bodySmall
     font.bold: root.valueBold

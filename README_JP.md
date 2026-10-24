@@ -30,7 +30,7 @@ omarchy plugin remove yumenaka.comigo
 
 ## 使い方と必要環境
 
-Shell プラグイン対応の Omarchy、curl 8.4 以降、および `/api/info` を提供する Comigo v1.3.7 以降の稼働中サービスが必要です。curl 経由で REST に接続し、プラグイン側に `comi` は不要です。HTTP リダイレクトには追従しないため、BasePath を含む最終的なサービス URL を指定してください。リクエストのタイムアウトは 15 秒、レスポンス上限は 1 MiB です。パスワードとトークンは標準入力で渡し、プロセス引数や一時ファイルには保存しません。
+Shell プラグイン対応の Omarchy、curl 8.4 以降、および `/api/info` を提供する Comigo v1.3.10 以降の稼働中サービスが必要です。curl 経由で REST に接続し、プラグイン側に `comi` は不要です。HTTP リダイレクトには追従しないため、BasePath を含む最終的なサービス URL を指定してください。リクエストのタイムアウトは 15 秒、レスポンス上限は 1 MiB です。パスワードとトークンは標準入力で渡し、プロセス引数や一時ファイルには保存しません。
 
 1. プラグインの外で Comigo をインストールして起動します：[GitHub](https://github.com/yumenaka/comigo) または [comigo.xyz](https://comigo.xyz/)（中国本土に推奨）。
 2. 「設定」に完全なサービス URL を入力します。例：`http://127.0.0.1:1234/`、`https://reader.example/books/`。
@@ -51,6 +51,8 @@ Shell プラグイン対応の Omarchy、curl 8.4 以降、および `/api/info`
 ## マニュアル
 
 詳しくは [Comigo マニュアル](https://comigo.xyz/manual/comigo-omarchy)をご覧ください。
+
+QR 画像も REST と同じ制限付き curl 通信を使用します。パネルを開いている間は転送量を 2 秒ごと、全体の状態を 30 秒ごとに更新します。設定は設定・サービスページに入った時、全体の更新時、操作後に取得します。ホストのすべてのバー領域に対応します。サービス連携には Omarchy 標準バーを使用してください。第三者の代替バーではプラグインサービスを取得できない場合があります。
 
 ## ライセンスと謝辞
 

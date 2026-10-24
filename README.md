@@ -30,7 +30,7 @@ omarchy plugin remove yumenaka.comigo
 
 ## Usage and requirements
 
-Requires Omarchy with Shell plugin support, curl 8.4 or later, and a running Comigo v1.3.7 or later with the `/api/info` endpoint. The plugin calls REST through curl; no local `comi` binary is required. Requests do not follow HTTP redirects: enter the final service URL, including its BasePath. Each request has a 15-second timeout and a 1 MiB response limit. Passwords and tokens pass through standard input, never command arguments or temporary files.
+Requires Omarchy with Shell plugin support, curl 8.4 or later, and a running Comigo v1.3.10 or later with the `/api/info` endpoint. The plugin calls REST through curl; no local `comi` binary is required. Requests do not follow HTTP redirects: enter the final service URL, including its BasePath. Each request has a 15-second timeout and a 1 MiB response limit. Passwords and tokens pass through standard input, never command arguments or temporary files.
 
 1. Install and start Comigo outside the plugin: [GitHub](https://github.com/yumenaka/comigo) or [comigo.xyz](https://comigo.xyz/) (recommended for mainland China).
 2. Enter the full service URL in Settings, such as `http://127.0.0.1:1234/` or `https://reader.example/books/`.
@@ -51,6 +51,8 @@ Closing or removing the plugin does not stop Comigo or delete libraries. If conn
 ## Manual
 
 See the [Comigo manual](https://comigo.xyz/manual/comigo-omarchy) for details.
+
+QR images use the same restricted curl transport as REST requests. Traffic refreshes every 2 seconds while the panel is open; full status refreshes every 30 seconds. Configuration is refreshed when entering Settings or Service, during a full refresh, and after changes. The plugin supports all host bar sections. Use the built-in Omarchy bar for service integration; third-party replacement bars may not expose plugin services.
 
 ## License and acknowledgments
 

@@ -44,6 +44,9 @@ Item {
   readonly property bool busy: (pendingHTTP !== null && !httpBackground) || queuedRequest !== null || desiredExternalAccess !== null
   readonly property string version: publicInfo.Version || info.Version || "—"
   property string selectedReadingIP: ""
+  property string qrSource: ""
+  property string qrTarget: ""
+  property bool qrFailed: false
   readonly property var readingIPs: info.externalAccess===false ? [] : (info.localIPs || []).filter(function(ip,index,ips){return ips.indexOf(ip)===index})
   // 配置地址是默认阅读入口，只有用户明确选择服务端返回的 IP 时才替换主机。
   readonly property string readingURL: selectedReadingIP && readingIPs.indexOf(selectedReadingIP)>=0 ? Model.withHost(endpoint+"/",selectedReadingIP) : endpoint+"/"
@@ -69,10 +72,11 @@ Item {
   function validURL(value){return /^https?:\/\/[^\s?#@]+(?:\/[^\s?#]*)?$/.test(value)}
 
   function findHostEntry(configuration) {
-    var layout=configuration.layout || {},sections=["left","center","right"]
+    var layout=configuration.layout || {},sections=Object.keys(layout)
     for(var i=0;i<sections.length;i++) {
-      var entries=layout[sections[i]] || []
-      for(var j=0;j<entries.length;j++)if(entries[j].id==="yumenaka.comigo")return entries[j]
+      var entries=layout[sections[i]]
+      if(!Array.isArray(entries))continue
+      for(var j=0;j<entries.length;j++)if(entries[j] && entries[j].id==="yumenaka.comigo")return entries[j]
     }
     return {}
   }
@@ -114,6 +118,7 @@ Item {
     timeout.stop()
     if(pendingHTTP){var old=pendingHTTP;pendingHTTP=null;old.signal(9);old.destroy()}
     selectedReadingIP="";connected=false;reachable=false;unsupportedServer=false
+    qrSource="";qrTarget="";qrFailed=false
     info={};publicInfo={};traffic=null;serverConfig={};configFileStatus=null;notice="";lastError=""
   }
   function switchConnection() {
@@ -124,17 +129,17 @@ Item {
   }
   onConnectionKeyChanged: switchConnection()
   onActiveChanged: if(active && settingsLoaded)refresh()
-  onPageChanged: if(active && (page==="config" || page==="service"))loadConfig()
+  onPageChanged: if(active){if(page==="config" || page==="service")loadConfig();else Qt.callLater(refreshQRCode)}
 
   // 单个请求加有限排队，切换地址后旧回调不能更新当前界面。
-  function request(method,path,body,callback,background) {
+  function request(method,path,body,callback,background,textResponse) {
     if(manuallyDisconnected || !settingsLoaded || !endpoint)return false
-    if(pendingHTTP){if(!background && httpBackground && !queuedRequest)queuedRequest=[method,path,body,callback,false];return false}
+    if(pendingHTTP){if(!background && httpBackground && !queuedRequest)queuedRequest=[method,path,body,callback,false,!!textResponse];return false}
     // curl 配置从标准输入读取；地址、密码和令牌均不进入命令行或临时文件。
     var input="url = "+curlQuote(endpoint+path)+"\nrequest = "+curlQuote(method)+"\nheader = \"Content-Type: application/json\"\n"
     if(token && path!=="/api/info" && path!=="/api/login")input+="header = "+curlQuote("Authorization: Bearer "+token)+"\n"
     if(body!==null)input+="data-raw = "+curlQuote(JSON.stringify(body))+"\n"
-    var proc=httpProcess.createObject(root,{input:input,callback:callback,requestGeneration:generation})
+    var proc=httpProcess.createObject(root,{input:input,callback:callback,requestGeneration:generation,textResponse:!!textResponse})
     pendingHTTP=proc;httpBackground=!!background
     timeout.restart();proc.running=true
     return true
@@ -148,13 +153,23 @@ Item {
       var split=proc.output.lastIndexOf("\n")
       status=Number(proc.output.slice(split+1))
       // 无效 JSON 与重定向均按失败处理，401 即使没有 JSON 也必须清除认证状态。
-      try{data=JSON.parse(proc.output.slice(0,split));if(!data || typeof data!=="object" || Array.isArray(data) || (status>=300 && status<400))throw new Error("invalid response")}catch(e){if(status!==401)status=0;data={}}
+      try{
+        var body=proc.output.slice(0,split)
+        if(status>=300 && status<400)throw new Error("redirect")
+        if(proc.textResponse){
+          if(!/^data:image\/png;base64,iVBORw0KGgo[A-Za-z0-9+/]*={0,2}$/.test(body))throw new Error("invalid QR image")
+          data={source:body}
+        }else{
+          data=JSON.parse(body)
+          if(!data || typeof data!=="object" || Array.isArray(data))throw new Error("invalid response")
+        }
+      }catch(e){if(status!==401)status=0;data={}}
     }
     proc.destroy()
     if(requestGeneration!==generation)return
     if(status===401){token="";needsLogin=true;connected=false;info={};traffic=null;serverConfig={};configFileStatus=null}
     callback(status,data)
-    if(queuedRequest){var next=queuedRequest;queuedRequest=null;Qt.callLater(function(){if(requestGeneration===root.generation)root.request(next[0],next[1],next[2],next[3],next[4])})}
+    if(queuedRequest){var next=queuedRequest;queuedRequest=null;Qt.callLater(function(){if(requestGeneration===root.generation)root.request(next[0],next[1],next[2],next[3],next[4],next[5])})}
   }
   Component {
     id:httpProcess
@@ -164,6 +179,7 @@ Item {
       property string output:""
       property var callback:null
       property int requestGeneration:0
+      property bool textResponse:false
       // -q 必须放在首位，忽略个人 curlrc；不跟随任何重定向，限制协议、时间和响应大小。
       command:["/usr/bin/curl","-q","--config","-","--silent","--globoff","--no-location","--proto","=http,https","--max-time","15","--max-filesize","1048576","--write-out","\n%{http_code}"]
       stdinEnabled:true
@@ -188,10 +204,29 @@ Item {
     connected=status===200 && !unsupportedServer && Array.isArray(data.localIPs) && data.localIPs.every(function(ip){return typeof ip==="string"})
     if(connected){updateSnapshot("info",data);updateSnapshot("traffic",data.traffic || null);lastError=""
       if(desiredExternalAccess!==null && data.externalAccess===desiredExternalAccess){desiredExternalAccess=null;tell("done")}
-      if(page==="config" || page==="service")Qt.callLater(loadConfig)
+      if(active && (page==="config" || page==="service"))Qt.callLater(loadConfig)
+      if(!qrSource)qrTarget=""
+      Qt.callLater(refreshQRCode)
     }else{info={};traffic=null;serverConfig={};configFileStatus=null;lastError=stateText}
   }
-  function refreshTraffic(){if(connected && !busy)request("GET","/api/server/traffic",null,function(status,data){if(status===200)root.updateSnapshot("traffic",data);else root.traffic=null},true)}
+  function refreshTraffic(){if(connected && !busy)request("GET","/api/server/traffic",null,function(status,data){
+    if(status===200)root.updateSnapshot("traffic",data)
+    else {
+      root.connected=false;root.traffic=null
+      if(status===0)root.reachable=false
+      Qt.callLater(root.refresh)
+    }
+  },true)}
+  // 二维码也走同一受限传输，只将已验证的 PNG data URL 交给 Image。
+  function refreshQRCode(){
+    if(!active || page!=="home" || !connected || pendingHTTP || queuedRequest || qrTarget===readingURL)return
+    var target=readingURL
+    if(request("GET","/api/qrcode.png?base64=true&qrcode_str="+encodeURIComponent(target),null,function(status,data){
+      if(target===root.readingURL){root.qrSource=status===200 ? data.source : "";root.qrFailed=status!==200}
+    },true,true))qrTarget=target
+  }
+  onReadingURLChanged:{qrSource="";qrTarget="";qrFailed=false;Qt.callLater(refreshQRCode)}
+  onPendingHTTPChanged:if(!pendingHTTP)Qt.callLater(refreshQRCode)
   function loadConfig(){if(connected)request("GET","/api/configs",null,function(status,data){root.updateSnapshot("serverConfig",status===200 ? data : {});if(status===200){Qt.callLater(function(){root.request("GET","/api/configs/status",null,function(code,value){root.updateSnapshot("configFileStatus",code===200 ? value.current : null)},true)})}else root.configFileStatus=null},true)}
   function setExternalAccess(enabled) {
     if(!localConnection || busy || !connected || serverConfig.ReadOnlyMode!==false)return
@@ -214,5 +249,5 @@ Item {
   Timer {interval:500;running:root.desiredExternalAccess!==null;repeat:true;onTriggered:{if(root.pendingHTTP)return;if(++root.reconnectAttempts>30){root.desiredExternalAccess=null;root.tell("http_error")}else root.refresh()}}
   Timer {id:toastTimer;interval:3500;onTriggered:root.notice=""}
   Timer {interval:30000;running:root.settingsLoaded && !root.manuallyDisconnected;repeat:true;onTriggered:if(!root.busy)root.refresh()}
-  Timer {interval:2000;running:root.active && root.connected;repeat:true;onTriggered:{if(root.busy || root.pendingHTTP)return;if(root.page==="config" || root.page==="service")root.refresh();else root.refreshTraffic()}}
+  Timer {interval:2000;running:root.active && root.connected;repeat:true;onTriggered:{if(root.busy || root.pendingHTTP)return;root.refreshTraffic()}}
 }

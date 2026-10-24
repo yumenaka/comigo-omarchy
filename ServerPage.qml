@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Controls as Controls
 import qs.Commons
+import qs.Commons as Commons
 
 Page {
   id:root
@@ -17,11 +18,11 @@ Page {
       checked:root.svc && root.svc.info.externalAccess===true
       enabled:root.svc && root.svc.connected && !root.svc.busy && typeof root.svc.info.externalAccess==="boolean" && root.svc.serverConfig.ReadOnlyMode===false
       onClicked:{root.svc.setExternalAccess(!root.svc.info.externalAccess);checked=Qt.binding(function(){return root.svc && root.svc.info.externalAccess===true})}
-      palette.windowText:Util.alpha(Color.popups.text,1)
+      palette.windowText:Util.alpha(Commons.Color.popups.text,1)
       font.family:Style.font.family;font.pixelSize:Style.font.bodySmall
     }
     InfoRow {width:parent.width;label:root.t("listen_address");value:root.svc ? root.svc.info.listenAddress || "—" : "—"}
-    Text {width:parent.width;text:root.t("external_note");wrapMode:Text.WordWrap;color:Util.alpha(Color.popups.text,0.55);font.family:Style.font.family;font.pixelSize:Style.font.caption}
+    Text {width:parent.width;text:root.t("external_note");wrapMode:Text.WordWrap;color:Util.alpha(Commons.Color.popups.text,0.55);font.family:Style.font.family;font.pixelSize:Style.font.caption}
   }
   Card {
     objectName:"serviceCard"

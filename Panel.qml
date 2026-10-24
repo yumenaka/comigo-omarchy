@@ -2,6 +2,7 @@ import QtQuick
 import Quickshell
 import Quickshell.Io
 import qs.Commons
+import qs.Commons as Commons
 import qs.Ui
 
 // 固定导航栏与卡片页参考 Mihomo 插件；数据和 REST 操作交给共享 Service。
@@ -76,8 +77,8 @@ Panel {
             Image {source:Qt.resolvedUrl("icon.png");width:Style.space(24);height:width;anchors.verticalCenter:parent.verticalCenter}
             Column {
               spacing:Style.space(2)
-              Text {text:"COMIGO";color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true;font.letterSpacing:1}
-              Text {text:root.svc ? root.svc.version : "—";textFormat:Text.PlainText;color:Util.alpha(Color.popups.text,0.45);font.family:Style.font.family;font.pixelSize:Style.font.caption}
+              Text {text:"COMIGO";color:Commons.Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true;font.letterSpacing:1}
+              Text {text:root.svc ? root.svc.version : "—";textFormat:Text.PlainText;color:Util.alpha(Commons.Color.popups.text,0.45);font.family:Style.font.family;font.pixelSize:Style.font.caption}
             }
           }
           Item {width:1;height:Style.space(15)}
@@ -92,7 +93,7 @@ Panel {
           anchors.rightMargin:Style.space(12)
           anchors.bottom:parent.bottom
           spacing:Style.space(10)
-          Rectangle {width:parent.width;height:1;color:Util.alpha(Color.popups.text,0.12)}
+          Rectangle {width:parent.width;height:1;color:Util.alpha(Commons.Color.popups.text,0.12)}
           Row {
             width:parent.width;spacing:Style.space(3)
             Repeater {
@@ -102,10 +103,10 @@ Panel {
           }
           FooterStat {text:"↑ "+(root.svc ? root.svc.bytes(root.svc.traffic ? root.svc.traffic.sendBytesPerSecond : undefined):"—")+"/s"}
           FooterStat {text:"↓ "+(root.svc ? root.svc.bytes(root.svc.traffic ? root.svc.traffic.receiveBytesPerSecond : undefined):"—")+"/s"}
-          FooterStat {text:root.svc ? root.svc.stateText : "—";color:root.svc && root.svc.connected ? Color.accent : Color.urgent}
+          FooterStat {text:root.svc ? root.svc.stateText : "—";color:root.svc && root.svc.connected ? Commons.Color.accent : Commons.Color.urgent}
         }
       }
-      Rectangle {id:divider;anchors.left:sidebar.right;anchors.top:parent.top;anchors.bottom:parent.bottom;width:1;color:Util.alpha(Color.popups.text,0.12)}
+      Rectangle {id:divider;anchors.left:sidebar.right;anchors.top:parent.top;anchors.bottom:parent.bottom;width:1;color:Util.alpha(Commons.Color.popups.text,0.12)}
       Item {
         anchors.left:divider.right
         anchors.leftMargin:Style.space(16)
@@ -122,8 +123,8 @@ Panel {
           anchors.bottomMargin:Style.space(6)
           width:Math.min(parent.width,toast.implicitWidth+Style.space(24));height:toast.implicitHeight+Style.space(14)
           visible:root.svc && root.svc.notice!==""
-          radius:Style.cornerRadius;color:Color.popups.background;border.width:1;border.color:Util.alpha(Color.accent,0.5)
-          Text {id:toast;anchors.centerIn:parent;width:Math.min(implicitWidth,parent.width-Style.space(24));text:root.svc ? root.svc.notice : "";textFormat:Text.PlainText;wrapMode:Text.WordWrap;color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.caption}
+          radius:Style.cornerRadius;color:Commons.Color.popups.background;border.width:1;border.color:Util.alpha(Commons.Color.accent,0.5)
+          Text {id:toast;anchors.centerIn:parent;width:Math.min(implicitWidth,parent.width-Style.space(24));text:root.svc ? root.svc.notice : "";textFormat:Text.PlainText;wrapMode:Text.WordWrap;color:Commons.Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.caption}
         }
       }
     }
@@ -136,7 +137,7 @@ Panel {
     text:glyph+"  "+title
     primary:root.page===name
     onClicked:root.goto(name)
-    Rectangle {visible:parent.primary;anchors.left:parent.left;anchors.verticalCenter:parent.verticalCenter;width:Style.space(2);height:parent.height*0.55;color:Color.accent;radius:1}
+    Rectangle {visible:parent.primary;anchors.left:parent.left;anchors.verticalCenter:parent.verticalCenter;width:Style.space(2);height:parent.height*0.55;color:Commons.Color.accent;radius:1}
   }
-  component FooterStat: Text {width:parent.width;textFormat:Text.PlainText;elide:Text.ElideRight;color:Util.alpha(Color.popups.text,0.55);font.family:Style.font.family;font.pixelSize:Style.font.caption}
+  component FooterStat: Text {width:parent.width;textFormat:Text.PlainText;elide:Text.ElideRight;color:Util.alpha(Commons.Color.popups.text,0.55);font.family:Style.font.family;font.pixelSize:Style.font.caption}
 }

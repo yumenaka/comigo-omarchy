@@ -1,5 +1,6 @@
 import QtQuick
 import qs.Commons
+import qs.Commons as Commons
 
 Page {
   id:root
@@ -8,8 +9,8 @@ Page {
   subtitle:svc ? svc.serviceName : ""
   Card {
     width:parent.width
-    Text {text:root.t("qr");color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
-    Text {visible:qr.status===Image.Error;text:root.t("qr_error");color:Color.urgent;font.family:Style.font.family;font.pixelSize:Style.font.caption}
+    Text {text:root.t("qr");color:Commons.Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
+    Text {visible:qr.status===Image.Error || (root.svc && root.svc.qrFailed);text:root.t("qr_error");color:Commons.Color.urgent;font.family:Style.font.family;font.pixelSize:Style.font.caption}
     Item {
       width:parent.width;height:Style.space(210)
       Image {
@@ -18,7 +19,8 @@ Page {
         visible:root.svc && root.svc.reachable
         anchors.centerIn:parent
         width:Style.space(210);height:width
-        source:root.visible && root.svc && root.svc.reachable ? root.svc.endpoint+"/api/qrcode.png?qrcode_str="+encodeURIComponent(root.svc.readingURL) : ""
+        source:root.svc ? root.svc.qrSource : ""
+        sourceSize:Qt.size(256,256)
         fillMode:Image.PreserveAspectFit
         smooth:false
       }
@@ -35,18 +37,18 @@ Page {
         onClicked:root.svc.cycleReadingIP(1)
       }
     }
-    Text {text:root.t("reading");color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
+    Text {text:root.t("reading");color:Commons.Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
     LinkText {width:parent.width;text:root.svc ? root.svc.readingURL || "—" : "—";wrapMode:Text.WrapAnywhere;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall}
     Row {spacing:Style.space(8);Action {text:root.t("open");enabled:root.svc && !!root.svc.browserURL;onClicked:root.svc.browse(root.svc.browserURL)} Action {text:root.t("copy");enabled:root.svc && !!root.svc.readingURL;onClicked:root.svc.copy(root.svc.readingURL)}}
   }
   Card {
     width:parent.width
-    Text {text:root.t("ips");color:Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
+    Text {text:root.t("ips");color:Commons.Color.popups.text;font.family:Style.font.family;font.pixelSize:Style.font.bodySmall;font.bold:true}
     Repeater {
       model:root.svc ? root.svc.info.localIPs || [] : []
       InfoRow {required property string modelData;width:parent.width;objectName:"readingIP_"+modelData;label:"IP";value:modelData;valueBold:root.svc && root.svc.currentReadingIP===modelData}
     }
-    Text {visible:!root.svc || !root.svc.connected;text:root.t("offline");color:Util.alpha(Color.popups.text,0.5);font.family:Style.font.family;font.pixelSize:Style.font.caption}
+    Text {visible:!root.svc || !root.svc.connected;text:root.t("offline");color:Util.alpha(Commons.Color.popups.text,0.5);font.family:Style.font.family;font.pixelSize:Style.font.caption}
   }
-  Text {visible:root.svc && (root.svc.unsupportedServer || (root.svc.connected && !root.svc.traffic));width:parent.width;text:root.t("unsupported");wrapMode:Text.WordWrap;color:Color.urgent;font.family:Style.font.family;font.pixelSize:Style.font.caption}
+  Text {visible:root.svc && (root.svc.unsupportedServer || (root.svc.connected && !root.svc.traffic));width:parent.width;text:root.t("unsupported");wrapMode:Text.WordWrap;color:Commons.Color.urgent;font.family:Style.font.family;font.pixelSize:Style.font.caption}
 }
