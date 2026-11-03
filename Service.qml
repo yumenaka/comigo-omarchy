@@ -30,6 +30,7 @@ Item {
   property var pendingHTTP: null
   property bool httpBackground: false
   property var queuedRequest: null
+  property var queuedConfigRequest: null
   property string sessionKey: ""
   property var sessions: ({})
   property int generation: 0
@@ -114,7 +115,7 @@ Item {
   function setLanguage(value){saveSettings({language:value})}
   // 地址切换／退出时先使旧响应失效，再清空私有状态。
   function clearConnection() {
-    generation++;queuedRequest=null;desiredExternalAccess=null
+    generation++;queuedRequest=null;queuedConfigRequest=null;desiredExternalAccess=null
     timeout.stop()
     if(pendingHTTP){var old=pendingHTTP;pendingHTTP=null;old.signal(9);old.destroy()}
     selectedReadingIP="";connected=false;reachable=false;unsupportedServer=false
@@ -134,7 +135,12 @@ Item {
   // 单个请求加有限排队，切换地址后旧回调不能更新当前界面。
   function request(method,path,body,callback,background,textResponse) {
     if(manuallyDisconnected || !settingsLoaded || !endpoint)return false
-    if(pendingHTTP){if(!background && httpBackground && !queuedRequest)queuedRequest=[method,path,body,callback,false,!!textResponse];return false}
+    if(pendingHTTP){
+      if(!background && httpBackground && !queuedRequest)queuedRequest=[method,path,body,callback,false,!!textResponse]
+      // 配置查询保留一个待执行请求，不因流量轮询丢失，也不让后台查询禁用控件。
+      else if(background && (path==="/api/configs" || path==="/api/configs/status"))queuedConfigRequest=[method,path,body,callback,true,!!textResponse]
+      return false
+    }
     // curl 配置从标准输入读取；地址、密码和令牌均不进入命令行或临时文件。
     var input="url = "+curlQuote(endpoint+path)+"\nrequest = "+curlQuote(method)+"\nheader = \"Content-Type: application/json\"\n"
     if(token && path!=="/api/info" && path!=="/api/login")input+="header = "+curlQuote("Authorization: Bearer "+token)+"\n"
@@ -169,7 +175,11 @@ Item {
     if(requestGeneration!==generation)return
     if(status===401){token="";needsLogin=true;connected=false;info={};traffic=null;serverConfig={};configFileStatus=null}
     callback(status,data)
-    if(queuedRequest){var next=queuedRequest;queuedRequest=null;Qt.callLater(function(){if(requestGeneration===root.generation)root.request(next[0],next[1],next[2],next[3],next[4],next[5])})}
+    var next=queuedRequest || queuedConfigRequest
+    if(next){
+      if(queuedRequest)queuedRequest=null;else queuedConfigRequest=null
+      Qt.callLater(function(){if(requestGeneration===root.generation)root.request(next[0],next[1],next[2],next[3],next[4],next[5])})
+    }
   }
   Component {
     id:httpProcess
