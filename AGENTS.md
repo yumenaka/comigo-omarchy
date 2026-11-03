@@ -1,6 +1,6 @@
 # 开发规则
 
-- 开发基线始终跟随 Omarchy 官方最新开发分支（当前为 `quattro`），每次开发先在线核对最新提交及 [Shell reference](https://github.com/omacom/omarchy/blob/quattro/docs/omarchy-shell.md)、[开发指南](https://plugins.omarchy.org/develop.html)与[发布指南](https://plugins.omarchy.org/publish.html)。不以本机版本代替最新规范，不增加旧接口兼容层；插件自身版本号独立维护。
+- 开发基线始终跟随 Omarchy 官方最新开发分支（当前为 `quattro`），每次开发先在线核对最新提交及 [Shell reference](https://github.com/omacom/omarchy/blob/quattro/docs/omarchy-shell.md)、[开发指南](https://plugins.omarchy.org/develop.html)与[发布指南](https://plugins.omarchy.org/publish.html)。不以本机版本代替最新规范，不增加旧接口兼容层；插件版本号与 Comigo 版本保持一致（manifest 不带 v 前缀），不单独递增。
 - 当前最低 Comigo 版本为 v1.3.10；版本门槛、三语界面提示与 README 必须同步，配套 Comigo 内置手册也须同步。
 - 配置使用宿主提供的条目及 `shell.updateEntryInline`，生命周期使用宿主接口；调色板使用 `Commons.Color`。不得绕过宿主能力边界读取其他插件或认证服务。
 - REST 与二维码共用受限 curl 通道：忽略 curlrc、不跟随重定向、仅 HTTP(S)、15 秒超时、1 MiB 上限。凭据仅经标准输入传递，令牌仅保留内存。

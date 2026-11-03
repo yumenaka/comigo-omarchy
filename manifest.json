@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "yumenaka.comigo",
   "name": "Comigo",
-  "version": "0.7.4",
+  "version": "1.3.10",
   "author": "yumenaka",
   "license": "MIT",
   "description": "Status bar companion for Comigo: server status, reading links and QR codes.",
