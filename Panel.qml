@@ -98,7 +98,7 @@ Panel {
             width:parent.width;spacing:Style.space(3)
             Repeater {
               model:[{code:"en",label:"EN"},{code:"zh",label:"中"},{code:"ja",label:"日"}]
-              Action {required property var modelData;width:(parent.width-parent.spacing*2)/3;leftPadding:0;rightPadding:0;text:modelData.label;primary:root.svc && root.svc.language.slice(0,2)===modelData.code;enabled:root.svc && !root.svc.busy;onClicked:root.svc.setLanguage(modelData.code)}
+              Action {required property var modelData;width:(parent.width-parent.spacing*2)/3;leftPadding:0;rightPadding:0;text:modelData.label;primary:root.svc && root.svc.language===modelData.code;enabled:root.svc && !root.svc.busy;onClicked:root.svc.setLanguage(modelData.code)}
             }
           }
           FooterStat {text:"↑ "+(root.svc ? root.svc.bytes(root.svc.traffic ? root.svc.traffic.sendBytesPerSecond : undefined):"—")+"/s"}

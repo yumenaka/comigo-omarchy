@@ -244,6 +244,15 @@ var messages = {
     "profile_tray": "トレイ"
   }
 }
+// 未设置时按系统界面语言优先级匹配；手动选择优先，无匹配统一回退英语。
+function resolveLanguage(preference, systemLanguages) {
+ if (["en", "zh", "ja"].indexOf(preference) >= 0) return preference
+ for (var i = 0; i < systemLanguages.length; i++) {
+  var lang = String(systemLanguages[i]).toLowerCase().split(/[-_.@]/)[0]
+  if (["en", "zh", "ja"].indexOf(lang) >= 0) return lang
+ }
+ return "en"
+}
 function text(key, language) {
  var lang = String(language).slice(0,2); var dict = messages[lang] || messages.en; return dict[key] || messages.en[key] || messages.en.error
 }

@@ -30,7 +30,7 @@ omarchy plugin remove yumenaka.comigo
 
 ## Usage and requirements
 
-Requires Omarchy with Shell plugin support, curl 8.4 or later, and a running Comigo v1.3.10 or later with the `/api/info` endpoint. The plugin calls REST through curl; no local `comi` binary is required. Requests do not follow HTTP redirects: enter the final service URL, including its BasePath. Each request has a 15-second timeout and a 1 MiB response limit. Passwords and tokens pass through standard input, never command arguments or temporary files.
+Requires current Omarchy Quattro with its built-in bar (tested on 4.5.0rc3), curl 8.4 or later, and a running Comigo v1.3.10 or later with the `/api/info` endpoint. The plugin calls REST through curl; no local `comi` binary is required. Requests do not follow HTTP redirects: enter the final service URL, including its BasePath. Each request has a 15-second timeout and a 1 MiB response limit. Passwords and tokens pass through standard input, never command arguments or temporary files.
 
 1. Install and start Comigo outside the plugin: [GitHub](https://github.com/yumenaka/comigo) or [comigo.xyz](https://comigo.xyz/) (recommended for mainland China).
 2. Enter the full service URL in Settings, such as `http://127.0.0.1:1234/` or `https://reader.example/books/`.
@@ -44,7 +44,7 @@ Opening the panel while disconnected defaults to Settings; losing the connection
 - The LAN sharing switch appears at the top of Service only when the saved service URL host is `127.0.0.1` or `localhost`, to avoid losing remote access with no way to restore it. Read-only mode blocks service setting changes. Configuration file information is read-only; use the Comigo website for detailed settings.
 - The Service page links to GitHub and comigo.xyz (recommended for mainland China). The plugin does not install binaries, manage Comigo processes, systemd or firewall rules, or check for updates.
 - Configure startup in Server control in Comigo's web settings or CLI. It defaults to off and uses a systemd user service on Linux, starting after user login. Start a stopped service outside the plugin.
-- Switch between English, Chinese and Japanese in the sidebar; `1`–`4` select pages, `r` refreshes, and `Esc` closes the panel.
+- Without a saved language choice, follow the system UI language; fall back to English when no supported language matches. A manual choice takes priority. Switch between English, Chinese and Japanese in the sidebar; `1`–`4` select pages, `r` refreshes, and `Esc` closes the panel.
 
 Closing or removing the plugin does not stop Comigo or delete libraries. If connection fails, check that the service is running and verify its full URL and credentials.
 
@@ -52,7 +52,7 @@ Closing or removing the plugin does not stop Comigo or delete libraries. If conn
 
 See the [Comigo manual](https://comigo.xyz/manual/comigo-omarchy) for details.
 
-QR images use the same restricted curl transport as REST requests. Traffic refreshes every 2 seconds while the panel is open; full status refreshes every 30 seconds. Configuration is refreshed when entering Settings or Service, during a full refresh, and after changes. The plugin supports all host bar sections. Use the built-in Omarchy bar for service integration; third-party replacement bars may not expose plugin services.
+QR images use the same restricted curl transport as REST requests. Traffic refreshes every 2 seconds while the panel is open; full status refreshes every 30 seconds. Configuration refreshes on entering Settings or Service, and on full refreshes while either page is open. The plugin supports all host bar sections.
 
 ## License and acknowledgments
 

@@ -41,7 +41,7 @@ Item {
   readonly property bool localConnection: ["127.0.0.1","localhost"].indexOf(Model.urlHost(endpoint).toLowerCase())>=0
   readonly property string connectionKey: endpoint
   readonly property string serviceName: "Comigo"
-  readonly property string language: settings.language === "auto" ? Qt.locale().name : settings.language || "en"
+  readonly property string language: I18n.resolveLanguage(settings.language, Qt.locale().uiLanguages)
   readonly property bool busy: (pendingHTTP !== null && !httpBackground) || queuedRequest !== null || desiredExternalAccess !== null
   readonly property string version: publicInfo.Version || info.Version || "—"
   property string selectedReadingIP: ""

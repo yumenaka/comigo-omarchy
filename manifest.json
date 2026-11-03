@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "id": "yumenaka.comigo",
   "name": "Comigo",
-  "version": "0.7.3",
+  "version": "0.7.4",
   "author": "yumenaka",
   "license": "MIT",
-  "description": "Comic & Manga reader for Omarchy",
+  "description": "Status bar companion for Comigo: server status, reading links and QR codes.",
   "kinds": [
     "service",
     "bar-widget"

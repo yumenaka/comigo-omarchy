@@ -30,7 +30,7 @@ omarchy plugin remove yumenaka.comigo
 
 ## 使用与依赖
 
-需要支持 Shell 插件的 Omarchy、curl 8.4 或以上版本，以及已运行的 Comigo v1.3.10 或以上版本（须提供 `/api/info` 接口）。插件通过 curl 调用 REST，本机无需安装 `comi`。请求不跟随 HTTP 重定向，请填写最终服务地址（含完整 BasePath）；每次请求超时 15 秒、响应上限 1 MiB。密码和令牌通过标准输入传递，不写入进程参数或临时文件。
+需要当前 Omarchy Quattro 及其内置状态栏（已验证 4.5.0rc3）、curl 8.4 或以上版本，以及已运行的 Comigo v1.3.10 或以上版本（须提供 `/api/info` 接口）。插件通过 curl 调用 REST，本机无需安装 `comi`。请求不跟随 HTTP 重定向，请填写最终服务地址（含完整 BasePath）；每次请求超时 15 秒、响应上限 1 MiB。密码和令牌通过标准输入传递，不写入进程参数或临时文件。
 
 1. 在插件外安装并启动 Comigo：[GitHub](https://github.com/yumenaka/comigo) 或 [comigo.xyz](https://comigo.xyz/)（中国大陆推荐）。
 2. 在“设置”填写完整服务地址，例如 `http://127.0.0.1:1234/` 或 `https://reader.example/books/`。
@@ -44,7 +44,7 @@ omarchy plugin remove yumenaka.comigo
 - 仅当已保存的连接地址主机为 `127.0.0.1` 或 `localhost` 时在“服务”页顶部显示局域网共享开关，避免远程关闭后无法恢复；只读模式禁止修改服务设置。配置文件信息只读展示，详细配置进入 Comigo 网页。
 - “服务”页提供 GitHub 和 comigo.xyz（中国大陆推荐）链接。插件不安装二进制、不启停 Comigo 进程、不操作 systemd 或防火墙，不提供更新检查。
 - 开机启动在 Comigo 网页设置的“服务控制”或 CLI 中管理，默认关闭；Linux 下使用 systemd 用户服务，于用户登录后启动。停止的服务需在插件外启动。
-- 侧栏可切换中英日语言；`1`–`4` 切换页面，`r` 刷新，`Esc` 关闭。
+- 未设置语言时跟随系统界面语言，无法匹配时使用英语；手动选择优先。侧栏可切换中英日语言；`1`–`4` 切换页面，`r` 刷新，`Esc` 关闭。
 
 关闭或卸载插件不会停止 Comigo，也不会删除书库。连接失败时检查服务运行状态、完整地址与认证信息。
 
@@ -52,7 +52,7 @@ omarchy plugin remove yumenaka.comigo
 
 详细说明见 [Comigo 手册](https://comigo.xyz/manual/comigo-omarchy)。
 
-二维码与 REST 请求共用受限 curl 通道。面板打开时每 2 秒刷新流量，完整状态每 30 秒刷新；进入设置或服务页、完整刷新及操作后查询配置。插件支持宿主提供的全部状态栏区域。完整服务功能请使用 Omarchy 内置状态栏，第三方替代状态栏可能不提供插件服务对象。
+二维码与 REST 请求共用受限 curl 通道。面板打开时每 2 秒刷新流量，完整状态每 30 秒刷新；进入设置或服务页时查询配置，这两页打开期间的完整刷新也会查询配置。插件支持宿主提供的全部状态栏区域。
 
 ## 许可与致谢
 
